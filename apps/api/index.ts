@@ -4,6 +4,9 @@ const app = express()
 
 app.use(express.json())
 
+const PORT = process.env.PORT || 3000
+
+
 app.get("/test", (req, res) => {
     res.json({
         message: "api end point is working boossss..."
@@ -18,6 +21,6 @@ app.post("/data", (req, res) => {
 })
 
 
-app.listen(3001, () => {
-    console.log(`server is running on http://localhost:3001`)
+app.listen(PORT, () => {
+    console.log(`server is running on http://localhost:{${PORT}}`)
 })
