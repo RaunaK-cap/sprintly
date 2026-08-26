@@ -1,0 +1,11 @@
+# database services
+services:
+  db:
+    image: postgres:14
+    container_name: sprintly-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secretfucks
+      POSTGRES_DB: sprintly
+    ports:
+      - "5432:5432"

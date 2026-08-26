@@ -1,4 +1,5 @@
 import express from "express"
+import { prisma_client } from "../../packages/database"
 
 const app = express()
 
@@ -15,6 +16,7 @@ app.get("/test", (req, res) => {
 
 app.post("/data", (req, res) => {
     const body = req.body
+
     res.json({
         message: body
     })
