@@ -5,11 +5,8 @@ export interface AuthenticatedRequest extends Request {
   userId?: number;
 }
 
-export const authMiddleware = (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer")) {
