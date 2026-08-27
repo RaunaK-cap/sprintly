@@ -7,10 +7,104 @@ datasource db {
   provider = "postgresql"
 }
 
-model user {
-  id        String @id @default(uuid())
+model users {
+  id        Int      @id @default(autoincrement())
   firstname String
   lastname  String
-  email     String @unique
+  email     String   @unique
   password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  membership      membership[]
+  issues          issue[]
+  comments        comment[]
+  assigned_issues issue_assignee[]
+}
+
+model organization {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships membership[]
+  board       board[]
+}
+
+enum roles {
+  ADMIN
+  MEMBER
+}
+
+model membership {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  organizationId Int
+  role           roles    @default(MEMBER)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         users        @relation(fields: [userId], references: [id])
+  organization organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+}
+
+model board {
+  id             Int      @id @default(autoincrement())
+  title          String
+  organizationId Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  issues       issue[]
+}
+
+enum ISSUE_STATUS {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model issue {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  boardId     Int
+  userId      Int
+  status      ISSUE_STATUS @default(TODO)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  board     board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user      users            @relation(fields: [userId], references: [id])
+  assignees issue_assignee[]
+  comments  comment[]
+}
+
+model issue_assignee {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  issueId   Int
+  createdAt DateTime @default(now())
+
+  user  users @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issue issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, issueId])
+}
+
+model comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  issueId   Int
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  issue issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  users @relation(fields: [userId], references: [id])
 }
