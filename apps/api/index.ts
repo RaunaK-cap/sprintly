@@ -1,28 +1,22 @@
-import express from "express"
-import { prisma_client } from "../../packages/database"
+import express from "express";
+import dotenv from "dotenv";
+import authRouter from "./routes/userauth";
 
-const app = express()
+dotenv.config();
 
-app.use(express.json())
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-const PORT = process.env.PORT || 3000
+app.use(express.json());
 
-
-app.get("/test", (req, res) => {
+app.get("/health", (req, res) => {
     res.json({
-        message: "api end point is working boossss..."
-    })
-})
+        message: "API server is running",
+    });
+});
 
-app.post("/data", (req, res) => {
-    const body = req.body
-
-    res.json({
-        message: body
-    })
-})
-
+app.use("/api/v1/auth", authRouter);
 
 app.listen(PORT, () => {
-    console.log(`server is running on http://localhost:{${PORT}}`)
-})
+    console.log(`Server is running on http://localhost:${PORT}`);
+});

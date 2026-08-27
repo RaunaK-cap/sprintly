@@ -4,14 +4,22 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bcryptjs": "^3.0.0",
+    "@types/bun": "latest",
+    "@types/jsonwebtoken": "^9.0.10"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "@types/express": "^5.0.6",
+    "@types/ws": "^8.18.1",
+    "bcryptjs": "^3.0.3",
+    "database": "*",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "database": "*"
+    "jsonwebtoken": "^9.0.3",
+    "ws": "^8.21.3",
+    "zod": "^4.4.3"
   }
 }
