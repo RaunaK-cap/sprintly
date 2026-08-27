@@ -13,7 +13,7 @@ export const authMiddleware = (
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer")) {
-    return res.status(401).json({ message: "Unauthorized: Missing token" });
+    return res.status(401).json({ message: "Unauthorized : missing token" });
   }
 
   const token = authHeader.split(" ")[1];
@@ -24,6 +24,6 @@ export const authMiddleware = (
     req.userId = decoded.userId;
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Unauthorized: Invalid or expired token" });
+    return res.status(401).json({ message: "Unauthorized : invalid token" });
   }
 };
