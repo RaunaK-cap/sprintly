@@ -1,15 +1,16 @@
 {
   "name": "database",
-  "module": "index.ts",
-  "type": "module",
+  "main": "./index.ts",
+  "module": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
     "@types/pg": "^8.23.1",
     "prisma": "^7.9.1"
-  },
-  "exports": {
-    "db-client-prisma": "./index.ts"
   },
   "peerDependencies": {
     "typescript": "^5"

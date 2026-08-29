@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { signupSchema, signinSchema } from "../types";
-import { prisma_client } from "../../../packages/database";
+import { prisma_client } from "database";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 

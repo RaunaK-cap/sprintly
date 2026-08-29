@@ -65,6 +65,8 @@
       "name": "websocket",
       "dependencies": {
         "@types/ws": "^8.18.1",
+        "database": "*",
+        "dotenv": "^17.4.2",
         "ws": "^8.21.3",
       },
       "devDependencies": {
