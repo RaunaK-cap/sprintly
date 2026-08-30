@@ -1,9 +1,52 @@
 "use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Building2, AlignLeft, ArrowLeft, Plus } from "lucide-react";
 
 export default function CreateOrgPage() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No token found. Please sign in again.");
+      }
+
+      const response = await fetch("http://localhost:4000/api/v1/org/createorg", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name, description }),
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resData.message || "Failed to create organization");
+      }
+
+      // Org created successfully! Redirect to Dashboard where the new org will load
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#090d16] text-gray-100 flex flex-col">
       {/* Header */}
@@ -33,7 +76,13 @@ export default function CreateOrgPage() {
             </div>
           </div>
 
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+          {error && (
+            <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs rounded-xl">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Organization Name <span className="text-indigo-400">*</span>
@@ -42,6 +91,9 @@ export default function CreateOrgPage() {
                 <Building2 className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
                 <input
                   type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Zepto or Acme Corp"
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
@@ -56,6 +108,8 @@ export default function CreateOrgPage() {
                 <AlignLeft className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
                 <textarea
                   rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   placeholder="What is this organization working on?"
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
                 />
@@ -69,13 +123,14 @@ export default function CreateOrgPage() {
               >
                 Cancel
               </Link>
-              <Link
-                href="/dashboard"
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl text-sm transition-all shadow-lg shadow-indigo-600/25 inline-flex items-center gap-2"
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-xl text-sm transition-all shadow-lg shadow-indigo-600/25 inline-flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Create Workspace</span>
-              </Link>
+                <span>{loading ? "Creating..." : "Create Workspace"}</span>
+              </button>
             </div>
           </form>
         </div>

@@ -17,8 +17,15 @@ export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: N
   const JWT_SECRET = process.env.JWT_SECRET!
 
   try {
-    const decoded = jwt.verify(token!, JWT_SECRET) as unknown as { userId: number };
-    req.userId = decoded.userId;
+    const decoded = jwt.verify(token!, JWT_SECRET) as unknown as { userId?: any; userid?: any };
+    const rawId = decoded.userId !== undefined ? decoded.userId : decoded.userid;
+    const userId = Number(rawId);
+
+    if (isNaN(userId)) {
+      return res.status(401).json({ message: "Unauthorized: Invalid user identifier in token" });
+    }
+
+    req.userId = userId;
     next();
   } catch (error) {
     return res.status(401).json({ message: "Unauthorized : invalid token" });

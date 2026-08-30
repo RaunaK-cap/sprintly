@@ -151,7 +151,7 @@ server.on("connection", async (socket: WebSocket, req) => {
                     id: dbIssue ? dbIssue.id : Date.now(),
                     title: title,
                     status: status,
-                    boardId: boardID,
+                    boardId: Number(boardID),
                     userId: userid,
                 };
 
@@ -189,7 +189,7 @@ server.on("connection", async (socket: WebSocket, req) => {
 
                 // Update in memory ISSUES array
                 ISSUES = ISSUES.map((item) =>
-                    item.id === issueId ? { ...item, status: newStatus } : item
+                    item.id === Number(issueId) ? { ...item, status: newStatus } : item
                 );
 
                 console.log(`User ${userid} moved Issue ${issueId} to status: ${newStatus}`);
@@ -201,7 +201,7 @@ server.on("connection", async (socket: WebSocket, req) => {
                         user.socket.send(
                             JSON.stringify({
                                 type: "issue_moved",
-                                issueId: issueId,
+                                issueId: Number(issueId),
                                 newStatus: newStatus,
                             })
                         );
@@ -224,7 +224,7 @@ server.on("connection", async (socket: WebSocket, req) => {
                 }
 
                 // Remove from memory ISSUES array
-                ISSUES = ISSUES.filter((item) => item.id !== issueId);
+                ISSUES = ISSUES.filter((item) => item.id !== Number(issueId));
                 console.log(`User ${userid} deleted Issue ${issueId}`);
 
                 // Broadcast to only members in this board room
