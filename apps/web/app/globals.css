@@ -1,37 +1,110 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #090d16;
-  --foreground: #f3f4f6;
-  --card: #111827;
-  --card-border: #1f2937;
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
+  /* Direction A - Warm Neutral */
+  --background: #F6F5F1;
+  --foreground: #171613;
+  --card: #F6F5F1;
+  --card-foreground: #171613;
+  --popover: #F6F5F1;
+  --popover-foreground: #171613;
+  --primary: #E8532A;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EAE9E4;
+  --secondary-foreground: #171613;
+  --muted: #EAE9E4;
+  --muted-foreground: #6E6B63;
+  --accent: #EAE9E4;
+  --accent-foreground: #171613;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #DEDBD2;
+  --input: #DEDBD2;
+  --ring: #DEDBD2;
+  
+  --radius: 0px;
+
+  /* Custom sprintly tokens */
+  --bg-inverted: #111110;
+}
+
+.dark {
+  /* Inverted fallback if dark mode is toggled */
+  --background: #111110;
+  --foreground: #F6F5F1;
+  --card: #111110;
+  --card-foreground: #F6F5F1;
+  --popover: #111110;
+  --popover-foreground: #F6F5F1;
+  --primary: #E8532A;
+  --primary-foreground: #FFFFFF;
+  --secondary: #2A2A28;
+  --secondary-foreground: #F6F5F1;
+  --muted: #2A2A28;
+  --muted-foreground: #A09E96;
+  --accent: #2A2A28;
+  --accent-foreground: #F6F5F1;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #FFFFFF;
+  --border: #33322E;
+  --input: #33322E;
+  --ring: #33322E;
+  
+  --bg-inverted: #F6F5F1;
 }
 
 body {
   background-color: var(--background);
-  color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   min-height: 100vh;
 }
 
-/* Custom scrollbar for Kanban board columns */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@theme inline {
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-bg-inverted: var(--bg-inverted);
+  
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(17, 24, 39, 0.5);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(75, 85, 99, 0.5);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(107, 114, 128, 0.8);
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply scroll-smooth;
+  }
 }

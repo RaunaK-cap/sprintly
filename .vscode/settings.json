@@ -1,6 +1,14 @@
 {
-  "eslint.workingDirectories": [
-    { "pattern": "apps/*" },
-    { "pattern": "packages/*" }
-  ]
+	"terminal.integrated.defaultProfile.linux": "bash",
+	"terminal.integrated.profiles.linux": {
+		"bash": {
+			"path": "/bin/bash"
+		},
+		"zsh": {
+			"path": "/usr/bin/zsh"
+		},
+		"fish": {
+			"path": "/usr/bin/fish"
+		}
+	}
 }
