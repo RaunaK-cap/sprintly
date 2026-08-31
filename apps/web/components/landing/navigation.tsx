@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useScroll, useTransform, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 
+import { Hexagon } from "lucide-react";
+
 export function Navigation() {
   const { scrollY } = useScroll();
   
@@ -29,8 +31,9 @@ export function Navigation() {
       <div className="max-w-[1280px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          {/* Simple geometric mark */}
-          <div className="size-6 bg-foreground rounded-[2px]" />
+          <div className="flex items-center justify-center size-7 bg-foreground rounded-[4px]">
+            <Hexagon className="size-4 text-background fill-background" />
+          </div>
           <span className="font-sans font-medium text-lg tracking-tight">Sprintly</span>
         </Link>
 

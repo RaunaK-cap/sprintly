@@ -1,6 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import { Hexagon } from "lucide-react";
 
 export function Footer() {
   return (
@@ -9,7 +10,9 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-16">
           <div className="col-span-2 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="size-6 bg-background rounded-[2px]" />
+              <div className="flex items-center justify-center size-7 bg-background rounded-[4px]">
+                <Hexagon className="size-4 text-bg-inverted fill-bg-inverted" />
+              </div>
               <span className="font-sans font-medium text-lg tracking-tight text-background">Sprintly</span>
             </Link>
             <p className="text-[14px] text-muted max-w-[240px]">

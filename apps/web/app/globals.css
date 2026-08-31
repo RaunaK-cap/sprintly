@@ -64,6 +64,30 @@
   --bg-inverted: #F6F5F1;
 }
 
+.force-light {
+  --background: #F6F5F1;
+  --foreground: #171613;
+  --card: #F6F5F1;
+  --card-foreground: #171613;
+  --popover: #F6F5F1;
+  --popover-foreground: #171613;
+  --primary: #E8532A;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EAE9E4;
+  --secondary-foreground: #171613;
+  --muted: #EAE9E4;
+  --muted-foreground: #6E6B63;
+  --accent: #EAE9E4;
+  --accent-foreground: #171613;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #DEDBD2;
+  --input: #DEDBD2;
+  --ring: #DEDBD2;
+  --bg-inverted: #111110;
+  color-scheme: light;
+}
+
 body {
   background-color: var(--background);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;

@@ -8,7 +8,7 @@ import { Footer } from "@/components/landing/footer";
 
 export default function LandingPage() {
   return (
-    <main className="bg-background min-h-screen selection:bg-primary/20 selection:text-ink">
+    <main className="force-light bg-background text-foreground min-h-screen selection:bg-primary/20 selection:text-ink">
       <Navigation />
       <Hero />
       <BentoGrid />
