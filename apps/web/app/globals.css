@@ -30,6 +30,13 @@
 
   /* Custom sprintly tokens */
   --bg-inverted: #111110;
+  
+  /* Board specific inverted tokens */
+  --board-bg: #111110;
+  --board-panel: #1C1C1A;
+  --board-text: #F2F1EE;
+  --board-text-muted: #8A8781;
+  --board-line: #2A2926;
 }
 
 .dark {
@@ -84,6 +91,12 @@ body {
   --color-foreground: var(--foreground);
   --color-background: var(--background);
   --color-bg-inverted: var(--bg-inverted);
+  
+  --color-board-bg: var(--board-bg);
+  --color-board-panel: var(--board-panel);
+  --color-board-text: var(--board-text);
+  --color-board-text-muted: var(--board-text-muted);
+  --color-board-line: var(--board-line);
   
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);

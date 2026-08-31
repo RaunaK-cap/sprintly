@@ -1,140 +1,386 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, AlignLeft, ArrowLeft, Plus } from "lucide-react";
+import axios from "axios";
+import { useTheme } from "next-themes";
+import { Sun, Moon, Trash2, Plus, Loader2 } from "lucide-react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-export default function CreateOrgPage() {
+interface Org {
+  id: number;
+  name: string;
+  description?: string;
+  createdAt: string;
+}
+
+export default function OrganizationsPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { theme, setTheme } = useTheme();
+  
+  // Left side: orgs user created (ADMIN)
+  const [createdOrgs, setCreatedOrgs] = useState<Org[]>([]);
+  // Right side: all other orgs (not created by user)
+  const [availableOrgs, setAvailableOrgs] = useState<Org[]>([]);
+  const [joinedOrgIds, setJoinedOrgIds] = useState<Set<number>>(new Set());
+  
+  const [loading, setLoading] = useState(true);
+  
+  // Dialog state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
+  // Joining state
+  const [joiningId, setJoiningId] = useState<number | null>(null);
+  // Deleting state
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  
+  const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+  
+  const fetchOrgs = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("sprintly_token");
       if (!token) {
-        throw new Error("No token found. Please sign in again.");
+        router.push("/login");
+        return;
       }
+      const headers = { Authorization: `Bearer ${token}` };
 
-      const response = await fetch("http://localhost:4000/api/v1/org/createorg", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name, description }),
-      });
-
-      const resData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(resData.message || "Failed to create organization");
+      // Two parallel requests:
+      // 1. GET /getorg (no orgId) -> returns orgs user CREATED (ADMIN) -> left side
+      // 2. GET /allorgs -> returns all OTHER orgs (excludes user-created) -> right side
+      const [createdRes, allRes] = await Promise.all([
+        axios.get(`${NEXT_PUBLIC_API_URL}/api/v1/org/getorg`, { headers }),
+        axios.get(`${NEXT_PUBLIC_API_URL}/api/v1/org/allorgs`, { headers }),
+      ]);
+      
+      if (createdRes.data.success) {
+        setCreatedOrgs(createdRes.data.data || []);
       }
-
-      // Org created successfully! Redirect to Dashboard where the new org will load
-      router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      
+      if (allRes.data.success) {
+        const joined: Org[] = allRes.data.data.joinedOrgs || [];
+        const available: Org[] = allRes.data.data.availableOrgs || [];
+        
+        // Merge joined + available into one list for the right side
+        setAvailableOrgs([...joined, ...available]);
+        // Track which ones the user already joined
+        setJoinedOrgIds(new Set(joined.map(o => o.id)));
+      }
+    } catch (err: unknown) {
+      console.error("Failed to fetch orgs:", err);
     } finally {
       setLoading(false);
     }
+  }, [router, NEXT_PUBLIC_API_URL]);
+
+  // Initial fetch + polling every 3 seconds
+  useEffect(() => {
+    fetchOrgs();
+    const intervalId = setInterval(fetchOrgs, 3000);
+    return () => clearInterval(intervalId);
+  }, [fetchOrgs]);
+
+  const handleCreateOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newOrgName.trim().length < 2) {
+      setCreateError("Organization name must be at least 2 characters.");
+      return;
+    }
+
+    setIsCreating(true);
+    setCreateError(null);
+
+    try {
+      const token = localStorage.getItem("sprintly_token");
+      await axios.post(
+        `${NEXT_PUBLIC_API_URL}/api/v1/org/createorg`,
+        { name: newOrgName },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setNewOrgName("");
+      setIsDialogOpen(false);
+      fetchOrgs();
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setCreateError(err.response?.data?.message || "Failed to create organization");
+      } else if (err instanceof Error) {
+        setCreateError(err.message);
+      }
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  return (
-    <div className="min-h-screen bg-[#090d16] text-gray-100 flex flex-col">
-      {/* Header */}
-      <header className="border-b border-gray-800/80 bg-[#0d1322]/80 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Dashboard</span>
-          </Link>
-          <span className="font-semibold text-sm text-gray-300">New Organization</span>
-        </div>
-      </header>
+  const handleJoinOrg = async (e: React.MouseEvent, orgId: number) => {
+    e.stopPropagation();
+    setJoiningId(orgId);
+    try {
+      const token = localStorage.getItem("sprintly_token");
+      await axios.post(
+        `${NEXT_PUBLIC_API_URL}/api/v1/org/joinorg`,
+        { orgId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchOrgs();
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        alert(err.response?.data?.message || "Failed to join organization");
+      }
+    } finally {
+      setJoiningId(null);
+    }
+  };
 
-      {/* Form Card */}
-      <main className="flex-1 max-w-xl w-full mx-auto px-6 pt-16 pb-12 flex flex-col items-center">
-        <div className="w-full bg-gray-900/80 border border-gray-800 rounded-2xl p-8 shadow-2xl backdrop-blur-md">
-          <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-800">
-            <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Create Organization</h1>
-              <p className="text-xs text-gray-400 mt-0.5">Setup a new team workspace for your boards</p>
-            </div>
+  const handleDeleteOrg = async (e: React.MouseEvent, orgId: number) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this organization? This cannot be undone.")) return;
+
+    setDeletingId(orgId);
+    try {
+      const token = localStorage.getItem("sprintly_token");
+      await axios.delete(
+        `${NEXT_PUBLIC_API_URL}/api/v1/org/deleteorg?orgId=${orgId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchOrgs();
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        alert(err.response?.data?.message || "Failed to delete organization.");
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const getInitials = (name: string) => name ? name.charAt(0).toUpperCase() : "?";
+
+  if (loading && createdOrgs.length === 0 && availableOrgs.length === 0) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="size-6 text-muted-foreground animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-4 md:p-12 font-sans selection:bg-primary/20 selection:text-foreground">
+      <div className="max-w-6xl mx-auto flex flex-col gap-8">
+        
+        {/* Header */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-[24px] md:text-[28px] font-semibold text-foreground tracking-tight leading-tight">
+              Organizations
+            </h1>
+            <p className="text-[14px] text-muted-foreground mt-1">
+              Create your own org or join an available one.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="text-muted-foreground hover:text-foreground h-11 w-11 rounded-sm shrink-0"
+            >
+              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <span className="sr-only">Toggle theme</span>
+            </Button>
+            
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger 
+                render={
+                  <Button className="h-11 bg-foreground text-background hover:bg-foreground/90 rounded-sm px-6 w-full sm:w-auto">
+                    Create organization
+                  </Button>
+                }
+              />
+              <DialogContent className="sm:max-w-[420px] bg-background border-border rounded-sm p-6 shadow-none">
+                <form onSubmit={handleCreateOrg}>
+                  <DialogHeader>
+                    <DialogTitle className="text-[18px] md:text-[20px] font-semibold text-foreground">
+                      Create organization
+                    </DialogTitle>
+                    <DialogDescription className="text-[14px] text-muted-foreground">
+                      Give your organization a name. You can invite people after.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-6">
+                    <Input 
+                      placeholder="e.g. Acme Studio" 
+                      value={newOrgName}
+                      onChange={(e) => {
+                        setNewOrgName(e.target.value);
+                        if (createError) setCreateError(null);
+                      }}
+                      className="h-11 rounded-sm border-border placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:ring-1"
+                    />
+                    {createError && (
+                      <p className="text-red-500 text-[12px] mt-2">{createError}</p>
+                    )}
+                  </div>
+                  <DialogFooter className="flex gap-2 sm:justify-end">
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      onClick={() => setIsDialogOpen(false)}
+                      className="h-11 rounded-sm text-foreground hover:bg-muted/50"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={isCreating}
+                      className="h-11 rounded-sm bg-foreground text-background hover:bg-foreground/90 px-6"
+                    >
+                      {isCreating ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+                      Create
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </header>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 mt-4">
+          
+          {/* LEFT: Your Created Organizations */}
+          <div className="flex flex-col gap-4">
+            <h2 className="text-[18px] font-semibold text-foreground tracking-tight border-b border-border pb-2">
+              Your Organizations
+            </h2>
+            
+            {createdOrgs.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {createdOrgs.map((org) => (
+                  <div 
+                    key={org.id}
+                    onClick={() => router.push(`/checkingboard/${org.id}`)}
+                    className="group relative flex items-center justify-between p-4 bg-background border border-border rounded-md cursor-pointer hover:border-foreground/30 hover:shadow-sm transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center justify-center size-10 rounded-sm bg-primary/10 text-primary font-semibold text-[16px]">
+                        {getInitials(org.name)}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[15px] font-medium text-foreground leading-tight">
+                          {org.name}
+                        </span>
+                        <span className="text-[12px] text-muted-foreground mt-0.5">
+                          Click to enter board
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleDeleteOrg(e, org.id)}
+                      disabled={deletingId === org.id}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-8 w-8 rounded-sm"
+                      title="Delete Organization"
+                    >
+                      {deletingId === org.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-4" />
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center border border-border border-dashed rounded-md bg-muted/20">
+                <p className="text-[14px] text-muted-foreground mb-4">
+                  You haven&apos;t created any organizations yet.
+                </p>
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(true)}
+                  className="h-9 rounded-sm"
+                >
+                  <Plus className="size-4 mr-2" />
+                  Create one now
+                </Button>
+              </div>
+            )}
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs rounded-xl">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1.5">
-                Organization Name <span className="text-indigo-400">*</span>
-              </label>
-              <div className="relative">
-                <Building2 className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Zepto or Acme Corp"
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
-                />
+          {/* RIGHT: Available Organizations (other users created these) */}
+          <div className="flex flex-col gap-4">
+            <h2 className="text-[18px] font-semibold text-foreground tracking-tight border-b border-border pb-2">
+              Available Organizations
+            </h2>
+            
+            {availableOrgs.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {availableOrgs.map((org) => {
+                  const alreadyJoined = joinedOrgIds.has(org.id);
+                  return (
+                    <div 
+                      key={org.id}
+                      onClick={() => router.push(`/checkingboard/${org.id}`)}
+                      className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-md cursor-pointer hover:border-foreground/30 hover:shadow-sm transition-all duration-200"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center size-10 rounded-sm bg-background border border-border text-foreground font-semibold text-[16px]">
+                          {getInitials(org.name)}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[15px] font-medium text-foreground leading-tight">
+                            {org.name}
+                          </span>
+                          <span className="text-[12px] text-muted-foreground mt-0.5">
+                            {alreadyJoined ? "Joined — click to enter" : "Click to enter board"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {!alreadyJoined && (
+                        <Button
+                          variant="outline"
+                          onClick={(e) => handleJoinOrg(e, org.id)}
+                          disabled={joiningId === org.id}
+                          className="h-8 text-[12px] bg-background hover:bg-foreground hover:text-background rounded-sm transition-colors shrink-0"
+                        >
+                          {joiningId === org.id ? (
+                            <Loader2 className="size-3 animate-spin mr-1" />
+                          ) : null}
+                          Join
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1.5">
-                Description (Optional)
-              </label>
-              <div className="relative">
-                <AlignLeft className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
-                <textarea
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What is this organization working on?"
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
-                />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center border border-border rounded-md bg-background">
+                <p className="text-[14px] text-muted-foreground">
+                  No organizations available yet.
+                </p>
               </div>
-            </div>
+            )}
+          </div>
 
-            <div className="pt-2 flex items-center justify-end gap-3">
-              <Link
-                href="/dashboard"
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-              >
-                Cancel
-              </Link>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-xl text-sm transition-all shadow-lg shadow-indigo-600/25 inline-flex items-center gap-2 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{loading ? "Creating..." : "Create Workspace"}</span>
-              </button>
-            </div>
-          </form>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

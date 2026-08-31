@@ -98,12 +98,13 @@ export const get_org = async (req: AuthenticatedRequest, res: Response) => {
                 data: org,
             });
         } else {
-            // Get all organizations the user is a member of
+            // Get all organizations the user CREATED (ADMIN)
             const orgs = await prisma_client.organization.findMany({
                 where: {
                     memberships: {
                         some: {
-                            userId: req.userId!
+                            userId: req.userId!,
+                            role: "ADMIN"
                         }
                     }
                 }
@@ -125,8 +126,10 @@ export const get_org = async (req: AuthenticatedRequest, res: Response) => {
 
 export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
     const parseddata = deleteOrgSchema.safeParse({
-        orgId: req.body.orgId || req.query.orgId || req.params.orgId
+        orgId: req.query.orgId
     });
+
+    console.log("Parsed data for delete_org:", parseddata.data);
 
     if (!parseddata.success) {
         return res.status(400).json({
@@ -136,29 +139,33 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
         });
     }
 
-    const { orgId } = parseddata.data;
+    const orgId = parseddata.data.orgId;
 
     try {
-        // 1. Check if the user is an ADMIN of the org
+        // Check if the user is a member of the org
         const membership = await prisma_client.membership.findFirst({
             where: {
-                organizationId: orgId,
+                organizationId: Number(orgId),
                 userId: req.userId!,
-                role: "ADMIN",
             }
         });
 
         if (!membership) {
             return res.status(403).json({
                 success: false,
-                message: "Unauthorized: Only administrators can delete this organization",
+                message: "Unauthorized: You are not a member of this organization",
             });
         }
 
-        // 2. Delete organization
+        // Delete all memberships first (no cascade on this relation)
+        await prisma_client.membership.deleteMany({
+            where: { organizationId: orgId }
+        });
+
+        // Delete organization (boards cascade automatically)
         await prisma_client.organization.delete({
             where: {
-                id: orgId,
+                id: Number(orgId),
             }
         });
 
@@ -168,6 +175,7 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
             data: orgId,
         });
     } catch (error) {
+        console.log(error)
         return res.status(500).json({
             success: false,
             message: "Internal server error deleting organization",
@@ -175,160 +183,26 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
     }
 };
 
-export const add_member = async (req: AuthenticatedRequest, res: Response) => {
-    const parsedInput = addMemberSchema.safeParse(req.body);
-    if (!parsedInput.success) {
-        return res.status(400).json({
-            success: false,
-            errors: parsedInput.error.issues,
-            message: "Validation error adding member",
-        });
-    }
-
-    const { orgId, userId, role } = parsedInput.data;
-
-    try {
-        // Check if caller is ADMIN of the org
-        const isCallerAdmin = await prisma_client.membership.findFirst({
-            where: {
-                organizationId: orgId,
-                userId: req.userId!,
-                role: "ADMIN",
-            }
-        });
-
-        if (!isCallerAdmin) {
-            return res.status(403).json({
-                success: false,
-                message: "Unauthorized: Only administrators can add members",
-            });
-        }
-
-        // Add user to organization membership
-        const newMembership = await prisma_client.membership.create({
-            data: {
-                organizationId: orgId,
-                userId: userId,
-                role: role,
-            }
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "Member added successfully",
-            data: newMembership,
-        });
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error adding member",
-        });
-    }
-};
-
-export const remove_member = async (req: AuthenticatedRequest, res: Response) => {
-    const parsedInput = z.object({
-        orgId: z.coerce.number(),
-        userId: z.coerce.number(),
-    }).safeParse(req.body);
-
-    if (!parsedInput.success) {
-        return res.status(400).json({
-            success: false,
-            errors: parsedInput.error.issues,
-            message: "Validation error removing member",
-        });
-    }
-
-    const { orgId, userId } = parsedInput.data;
-
-    try {
-        // Must be ADMIN, or leaving oneself
-        const isCallerAdmin = await prisma_client.membership.findFirst({
-            where: {
-                organizationId: orgId,
-                userId: req.userId!,
-                role: "ADMIN",
-            }
-        });
-
-        if (!isCallerAdmin && userId !== req.userId!) {
-            return res.status(403).json({
-                success: false,
-                message: "Unauthorized: Only administrators can remove members, or you can leave the organization",
-            });
-        }
-
-        await prisma_client.membership.delete({
-            where: {
-                userId_organizationId: {
-                    userId: userId,
-                    organizationId: orgId,
-                }
-            }
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "Member removed successfully",
-        });
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error removing member",
-        });
-    }
-};
-
-export const remove_memberorgID = async (req: AuthenticatedRequest, res: Response) => {
-    const parsedInput = z.object({
-        orgId: z.coerce.number(),
-    }).safeParse(req.body);
-
-    if (!parsedInput.success) {
-        return res.status(400).json({
-            success: false,
-            errors: parsedInput.error.issues,
-            message: "Validation error leaving organization",
-        });
-    }
-
-    const { orgId } = parsedInput.data;
-
-    try {
-        await prisma_client.membership.delete({
-            where: {
-                userId_organizationId: {
-                    userId: req.userId!,
-                    organizationId: orgId,
-                }
-            }
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "Left organization successfully",
-        });
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error leaving organization",
-        });
-    }
-};
-
 export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        // Get all organizations
+        // Get all organizations EXCEPT the ones the user created (ADMIN)
         const allOrgs = await prisma_client.organization.findMany({
+            where: {
+                memberships: {
+                    none: {
+                        userId: req.userId!,
+                        role: "ADMIN"
+                    }
+                }
+            },
             include: {
                 memberships: true
             }
         });
 
-        // Classify them into "myOrgs" (already joined) and "otherOrgs" (available to join)
-        const myOrgs = [];
-        const otherOrgs = [];
+        // Separate into already-joined and available-to-join
+        const joinedOrgs = [];
+        const availableOrgs = [];
 
         for (const org of allOrgs) {
             const isMember = org.memberships.some(m => m.userId === req.userId);
@@ -339,17 +213,17 @@ export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => 
                 createdAt: org.createdAt,
             };
             if (isMember) {
-                myOrgs.push(orgData);
+                joinedOrgs.push(orgData);
             } else {
-                otherOrgs.push(orgData);
+                availableOrgs.push(orgData);
             }
         }
 
         return res.status(200).json({
             success: true,
             data: {
-                myOrgs,
-                otherOrgs
+                joinedOrgs,
+                availableOrgs
             }
         });
     } catch (error) {
