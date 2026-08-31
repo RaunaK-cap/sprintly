@@ -129,7 +129,7 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
         orgId: req.query.orgId
     });
 
-    console.log("Parsed data for delete_org:", parseddata.data);
+    
 
     if (!parseddata.success) {
         return res.status(400).json({
@@ -175,7 +175,7 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
             data: orgId,
         });
     } catch (error) {
-        console.log(error)
+        
         return res.status(500).json({
             success: false,
             message: "Internal server error deleting organization",
@@ -185,26 +185,31 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
 
 export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        // Get all organizations EXCEPT the ones the user created (ADMIN)
+        
+        
+        // Get ALL organizations in the system
         const allOrgs = await prisma_client.organization.findMany({
-            where: {
-                memberships: {
-                    none: {
-                        userId: req.userId!,
-                        role: "ADMIN"
-                    }
-                }
-            },
             include: {
                 memberships: true
             }
         });
 
-        // Separate into already-joined and available-to-join
+        
+
+        // Filter out orgs where this user is ADMIN (creator)
+        // and separate the rest into joined vs available
         const joinedOrgs = [];
         const availableOrgs = [];
 
         for (const org of allOrgs) {
+            const isCreator = org.memberships.some(m => m.userId === req.userId && m.role === "ADMIN");
+            
+            // Skip orgs the user created - those go to left side via /getorg
+            if (isCreator) {
+                
+                continue;
+            }
+            
             const isMember = org.memberships.some(m => m.userId === req.userId);
             const orgData = {
                 id: org.id,
@@ -212,12 +217,15 @@ export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => 
                 description: org.description,
                 createdAt: org.createdAt,
             };
+            
             if (isMember) {
                 joinedOrgs.push(orgData);
             } else {
                 availableOrgs.push(orgData);
             }
         }
+
+       
 
         return res.status(200).json({
             success: true,
@@ -227,6 +235,7 @@ export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => 
             }
         });
     } catch (error) {
+     
         return res.status(500).json({
             success: false,
             message: "Internal server error fetching all organizations"

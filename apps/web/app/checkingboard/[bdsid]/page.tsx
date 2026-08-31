@@ -33,6 +33,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { getAuthToken } from "@/lib/auth";
 
 interface Issue {
   id: number;
@@ -79,7 +80,7 @@ export default function CheckingBoardPage() {
   useEffect(() => {
     const fetchOrgs = async () => {
       try {
-        const token = localStorage.getItem("sprintly_token");
+        const token = getAuthToken();
         if (!token) {
           return;
         }
@@ -99,7 +100,7 @@ export default function CheckingBoardPage() {
 
   // WebSocket Connection
   useEffect(() => {
-    const token = localStorage.getItem("sprintly_token");
+    const token = getAuthToken();
     if (!token) {
       // router.push("/login");
       return;

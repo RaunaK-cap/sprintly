@@ -17,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { getAuthToken } from "@/lib/auth";
+
 interface Org {
   id: number;
   name: string;
@@ -51,7 +53,7 @@ export default function OrganizationsPage() {
   
   const fetchOrgs = useCallback(async () => {
     try {
-      const token = localStorage.getItem("sprintly_token");
+      const token = getAuthToken();
       if (!token) {
         router.push("/login");
         return;
@@ -104,7 +106,7 @@ export default function OrganizationsPage() {
     setCreateError(null);
 
     try {
-      const token = localStorage.getItem("sprintly_token");
+      const token = getAuthToken();
       await axios.post(
         `${NEXT_PUBLIC_API_URL}/api/v1/org/createorg`,
         { name: newOrgName },
@@ -128,7 +130,7 @@ export default function OrganizationsPage() {
     e.stopPropagation();
     setJoiningId(orgId);
     try {
-      const token = localStorage.getItem("sprintly_token");
+      const token = getAuthToken();
       await axios.post(
         `${NEXT_PUBLIC_API_URL}/api/v1/org/joinorg`,
         { orgId },
@@ -150,7 +152,7 @@ export default function OrganizationsPage() {
 
     setDeletingId(orgId);
     try {
-      const token = localStorage.getItem("sprintly_token");
+      const token = getAuthToken();
       await axios.delete(
         `${NEXT_PUBLIC_API_URL}/api/v1/org/deleteorg?orgId=${orgId}`,
         { headers: { Authorization: `Bearer ${token}` } }

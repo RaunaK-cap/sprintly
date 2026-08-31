@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { ArrowRight, Eye } from "lucide-react";
+import { setAuthToken } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function LoginPage() {
       );
 
       // Success, store token and redirect to dashboard
-      localStorage.setItem("sprintly_token", res.data.token);
+      setAuthToken(res.data.token);
       router.push("/org/create");
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
