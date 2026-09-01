@@ -240,6 +240,121 @@ server.on("connection", async (socket: WebSocket, req) => {
                     }
                 });
             }
+
+            // ADD COMMENT / CHAT MESSAGE — save to DB, broadcast to board room
+            if (parseddata.type === "comment_added") {
+                const { issueId, content, boardID } = parseddata;
+
+                let dbComment: any = null;
+                try {
+                    dbComment = await prisma_client.comment.create({
+                        data: {
+                            content: content?.trim() || "",
+                            issueId: Number(issueId),
+                            userId: userid,
+                        },
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    firstname: true,
+                                    lastname: true,
+                                    email: true,
+                                }
+                            }
+                        }
+                    });
+                    console.log(`DB Created Comment ${dbComment.id} on Issue ${issueId}`);
+                } catch (dbErr) {
+                    console.log("DB create comment error:", dbErr);
+                }
+
+                const newComment = dbComment || {
+                    id: Date.now(),
+                    content: content,
+                    issueId: Number(issueId),
+                    userId: userid,
+                    createdAt: new Date().toISOString(),
+                    user: {
+                        id: userid,
+                        firstname: "User",
+                        lastname: `#${userid}`,
+                        email: "",
+                    }
+                };
+
+                // Broadcast to members in this board room
+                const targetRoom = ROOMS[boardID] || [];
+                targetRoom.forEach((user) => {
+                    if (user.socket.readyState === user.socket.OPEN) {
+                        user.socket.send(
+                            JSON.stringify({
+                                type: "comment_added",
+                                comment: newComment,
+                                issueId: Number(issueId),
+                            })
+                        );
+                    }
+                });
+            }
+
+            // TYPING INDICATOR
+            if (parseddata.type === "typing") {
+                const { issueId, boardID, userName } = parseddata;
+                const targetRoom = ROOMS[boardID] || [];
+                targetRoom.forEach((user) => {
+                    if (user.socket.readyState === user.socket.OPEN && user.userID !== userid) {
+                        user.socket.send(
+                            JSON.stringify({
+                                type: "user_typing",
+                                userID: userid,
+                                userName: userName || `User #${userid}`,
+                                issueId: Number(issueId),
+                            })
+                        );
+                    }
+                });
+            }
+
+            // ISSUE TITLE/DESCRIPTION/STATUS INLINE UPDATE
+            if (parseddata.type === "issue_updated") {
+                const { issueId, title, description, status, boardID, updatedBy } = parseddata;
+                const updateData: any = {};
+                if (title !== undefined) updateData.title = title;
+                if (description !== undefined) updateData.description = description;
+                if (status !== undefined) updateData.status = status;
+
+                try {
+                    await prisma_client.issue.update({
+                        where: { id: Number(issueId) },
+                        data: updateData
+                    });
+                    console.log(`DB Updated Issue ${issueId}`);
+                } catch (dbErr) {
+                    console.log("DB update issue error:", dbErr);
+                }
+
+                // Update in memory ISSUES
+                ISSUES = ISSUES.map((item) =>
+                    item.id === Number(issueId) ? { ...item, ...updateData } : item
+                );
+
+                const targetRoom = ROOMS[boardID] || [];
+                targetRoom.forEach((user) => {
+                    if (user.socket.readyState === user.socket.OPEN) {
+                        user.socket.send(
+                            JSON.stringify({
+                                type: "issue_updated",
+                                issueId: Number(issueId),
+                                title,
+                                description,
+                                status,
+                                updatedBy: updatedBy || `User #${userid}`,
+                            })
+                        );
+                    }
+                });
+            }
         } catch (err) {
             console.error("Error processing WebSocket message:", err);
         }

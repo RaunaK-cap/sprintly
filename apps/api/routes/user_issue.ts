@@ -7,6 +7,8 @@ import {
   get_issuebyid,
   update_issuebyid,
   update_issue_status,
+  add_comment,
+  get_comments,
 } from "../controllers/issue";
 
 const issues = Router();
@@ -17,5 +19,8 @@ issues.put("/moveissue/:id", authMiddleware, update_issue_status);
 issues.get("/getissues", authMiddleware, get_issue);
 issues.get("/getissue/:id", authMiddleware, get_issuebyid);
 issues.delete("/deleteissue/:id", authMiddleware, delete_issuebyid);
+
+issues.post("/:id/comments", authMiddleware, add_comment);
+issues.get("/:id/comments", authMiddleware, get_comments);
 
 export default issues;

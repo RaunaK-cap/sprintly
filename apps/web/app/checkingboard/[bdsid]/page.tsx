@@ -256,7 +256,7 @@ export default function CheckingBoardPage() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
                 key={issue.id}
-                onClick={() => router.push(`/org/${bdsid}/board/${bdsid}/issues/${issue.id}`)}
+                onClick={() => router.push(`/checkingboard/${bdsid}/issues/${issue.id}`)}
                 className="group relative flex flex-col gap-2 p-3 bg-background border border-border shadow-sm rounded-md cursor-pointer hover:border-foreground/20 transition-colors"
               >
                 <div className="flex items-start justify-between gap-3">

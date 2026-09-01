@@ -81,6 +81,44 @@ export const get_issuebyid = async (req: AuthenticatedRequest, res: Response) =>
         const issue = await prisma_client.issue.findUnique({
             where: {
                 id: issueId,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstname: true,
+                        lastname: true,
+                        email: true,
+                    }
+                },
+                board: {
+                    select: {
+                        id: true,
+                        title: true,
+                        organizationId: true,
+                        organization: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    }
+                },
+                comments: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                firstname: true,
+                                lastname: true,
+                                email: true,
+                            }
+                        }
+                    },
+                    orderBy: {
+                        createdAt: "asc"
+                    }
+                }
             }
         });
 
@@ -207,6 +245,91 @@ export const delete_issuebyid = async (req: AuthenticatedRequest, res: Response)
         return res.status(500).json({
             success: false,
             message: "Internal server error deleting issue",
+        });
+    }
+};
+
+export const add_comment = async (req: AuthenticatedRequest, res: Response) => {
+    const issueId = Number(req.params.id);
+    const { content } = req.body;
+
+    if (isNaN(issueId) || !content || typeof content !== "string" || !content.trim()) {
+        return res.status(400).json({
+            success: false,
+            message: "Issue ID and non-empty content are required",
+        });
+    }
+
+    try {
+        const comment = await prisma_client.comment.create({
+            data: {
+                content: content.trim(),
+                issueId,
+                userId: req.userId!,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstname: true,
+                        lastname: true,
+                        email: true,
+                    }
+                }
+            }
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Comment added successfully",
+            data: comment,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error adding comment",
+        });
+    }
+};
+
+export const get_comments = async (req: AuthenticatedRequest, res: Response) => {
+    const issueId = Number(req.params.id);
+
+    if (isNaN(issueId)) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid issue ID format",
+        });
+    }
+
+    try {
+        const comments = await prisma_client.comment.findMany({
+            where: {
+                issueId,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstname: true,
+                        lastname: true,
+                        email: true,
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: "asc"
+            }
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: comments,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error fetching comments",
         });
     }
 };
