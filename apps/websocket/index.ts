@@ -25,10 +25,52 @@ interface Issue {
 }
 
 const ROOMS: RoomsMap = {};
+
+// const ROOMS = {
+// Board Room 1 (e.g., "Zepto Board")
+//   "1": [
+// { userID: 10, socket: <Active WebSocket Connection for User 10> },
+// { userID: 12, socket: <Active WebSocket Connection for User 12> }
+//   ],
+// 
+//   Board Room 2 (e.g., "Zomato Board")
+//   "2": [
+// { userID: 15, socket: <Active WebSocket Connection for User 15> }
+//   ]
+// };
+
+
+
 let connections: WebSocket[] = [];
 
 // Global In-Memory Issues Cache (shared across all boards)
 let ISSUES: Issue[] = [];
+
+// const ISSUES = [
+//   {
+//     id: 101,
+//     title: "Design dark mode tokens",
+//     status: "TODO",
+//     boardId: 1,
+//     userId: 10
+//   },
+//   {
+//     id: 102,
+//     title: "Setup WebSocket presence",
+//     status: "IN_PROGRESS",
+//     boardId: 1,
+//     userId: 12
+//   },
+//   {
+//     id: 201,
+//     title: "Database index tuning",
+//     status: "DONE",
+//     boardId: 2,
+//     userId: 15
+//   }
+// ];
+
+let ISSUES_DISCUSSION_CHAT = []
 
 server.on("connection", async (socket: WebSocket, req) => {
     // Extract token from URL query string
@@ -314,6 +356,10 @@ server.on("connection", async (socket: WebSocket, req) => {
                         );
                     }
                 });
+            }
+
+            if(parseddata.type === "issue-dicussion-") {
+                const { issueId, content, boardID, userId } = parseddata;
             }
 
             // ISSUE TITLE/DESCRIPTION/STATUS INLINE UPDATE
