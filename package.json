@@ -3,7 +3,16 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=api --filter=websocket --filter=web",
+    "dev:backend": "turbo run dev --filter=api --filter=websocket",
+    "dev:web": "turbo run dev --filter=web",
+    "start:backend": "turbo run start --filter=api --filter=websocket",
+    "db:generate": "bun run --filter database db:generate",
+    "db:migrate": "bun run --filter database db:migrate",
+    "db:push": "bun run --filter database db:push",
+    "db:studio": "bun run --filter database db:studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
