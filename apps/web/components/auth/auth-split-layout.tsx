@@ -16,7 +16,7 @@ export function AuthSplitLayout({
   headerLinkHref,
 }: AuthSplitLayoutProps) {
   const { theme, setTheme } = useTheme();
-  
+
   return (
     <div className="flex min-h-screen bg-background">
       {/* Left panel (Form side) */}
@@ -29,7 +29,7 @@ export function AuthSplitLayout({
             </div>
             <span className="font-sans font-medium text-lg tracking-tight">Sprintly</span>
           </Link>
-          
+
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -65,19 +65,13 @@ export function AuthSplitLayout({
       </div>
 
       {/* Right panel (Image/Texture side) */}
-      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-bg-inverted">
-        {/* Optional decorative content */}
-        <div className="absolute inset-0 z-10 pointer-events-none">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
-            src="https://images.unsplash.com/photo-1600573472591-ee6981cf35b6?q=80&w=2000&auto=format&fit=crop" 
-            alt="" 
-            className="w-full h-full object-cover opacity-60"
-          />
-          <div className="absolute inset-0 bg-foreground/20 backdrop-blur-[2px]" />
-        </div>
-        {/* Gradient overlay to ensure it blends nicely and stays premium */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-bg-inverted/60 to-transparent" />
+      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-bg-inverted rounded-lg">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/authbg.png"
+          alt="Sprintly"
+          className="absolute inset-0 w-[950px] h-[860px] ml-1 mt-2 rounded-xl object-cover"
+        />
       </div>
     </div>
   );

@@ -26,7 +26,7 @@
   --input: #DEDBD2;
   --ring: #DEDBD2;
   
-  --radius: 0px;
+  --radius: 0.5rem;
 
   /* Custom sprintly tokens */
   --bg-inverted: #111110;

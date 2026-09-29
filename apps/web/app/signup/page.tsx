@@ -89,45 +89,45 @@ export default function SignupPage() {
         {/* Form Fields */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex gap-4">
-            <Input 
+            <Input
               type="text"
               name="firstname"
               value={formData.firstname}
               onChange={handleChange}
               required
-              placeholder="First name" 
+              placeholder="First name"
               className="h-11 rounded-sm border-border bg-white placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:ring-1"
             />
-            <Input 
-              type="text" 
+            <Input
+              type="text"
               name="lastname"
               value={formData.lastname}
               onChange={handleChange}
               required
-              placeholder="Last name" 
+              placeholder="Last name"
               className="h-11 rounded-sm border-border bg-white placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:ring-1"
             />
           </div>
-          <Input 
-            type="email" 
+          <Input
+            type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
             required
-            placeholder="Email" 
+            placeholder="Email"
             className="h-11 rounded-sm border-border bg-white placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:ring-1"
           />
           <div className="relative">
-            <Input 
+            <Input
               type={showPassword ? "text" : "password"}
               name="password"
               value={formData.password}
               onChange={handleChange}
               required
-              placeholder="Password" 
+              placeholder="Password"
               className="h-11 rounded-sm border-border bg-white placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:ring-1 pr-10"
             />
-            <button 
+            <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"

@@ -24,13 +24,13 @@ export const create_org = async (req: AuthenticatedRequest, res: Response) => {
                 memberships: {
                     create: {
                         userId: req.userId!,
-                        role: "ADMIN", // Explicitly make the creator the ADMIN
+                        role: "ADMIN",
                     }
                 }
             }
         });
 
-        // Auto-create a default board with the exact same ID as the Org ID
+
         await prisma_client.board.create({
             data: {
                 id: org.id,
@@ -70,7 +70,7 @@ export const get_org = async (req: AuthenticatedRequest, res: Response) => {
 
     try {
         if (orgId) {
-            // Get specific organization where the user is a member, including its boards
+
             const org = await prisma_client.organization.findFirst({
                 where: {
                     id: orgId,
@@ -98,7 +98,6 @@ export const get_org = async (req: AuthenticatedRequest, res: Response) => {
                 data: org,
             });
         } else {
-            // Get all organizations the user CREATED (ADMIN)
             const orgs = await prisma_client.organization.findMany({
                 where: {
                     memberships: {
@@ -129,7 +128,7 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
         orgId: req.query.orgId
     });
 
-    
+
 
     if (!parseddata.success) {
         return res.status(400).json({
@@ -175,7 +174,7 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
             data: orgId,
         });
     } catch (error) {
-        
+
         return res.status(500).json({
             success: false,
             message: "Internal server error deleting organization",
@@ -185,8 +184,8 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
 
 export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        
-        
+
+
         // Get ALL organizations in the system
         const allOrgs = await prisma_client.organization.findMany({
             include: {
@@ -194,7 +193,7 @@ export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => 
             }
         });
 
-        
+
 
         // Filter out orgs where this user is ADMIN (creator)
         // and separate the rest into joined vs available
@@ -203,13 +202,13 @@ export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => 
 
         for (const org of allOrgs) {
             const isCreator = org.memberships.some(m => m.userId === req.userId && m.role === "ADMIN");
-            
+
             // Skip orgs the user created - those go to left side via /getorg
             if (isCreator) {
-                
+
                 continue;
             }
-            
+
             const isMember = org.memberships.some(m => m.userId === req.userId);
             const orgData = {
                 id: org.id,
@@ -217,7 +216,7 @@ export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => 
                 description: org.description,
                 createdAt: org.createdAt,
             };
-            
+
             if (isMember) {
                 joinedOrgs.push(orgData);
             } else {
@@ -225,7 +224,7 @@ export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => 
             }
         }
 
-       
+
 
         return res.status(200).json({
             success: true,
@@ -235,7 +234,7 @@ export const get_all_orgs = async (req: AuthenticatedRequest, res: Response) => 
             }
         });
     } catch (error) {
-     
+
         return res.status(500).json({
             success: false,
             message: "Internal server error fetching all organizations"
@@ -444,17 +443,8 @@ export const get_org_members = async (req: AuthenticatedRequest, res: Response) 
     }
 };
 
-/**
- * --------------------------------------------------------------------------------
- * 👥 INVITE / ADD MEMBER BY EMAIL
- * Endpoint: POST /api/v1/org/addmember
- * Body: { orgId: number, email: string, role?: "ADMIN" | "MEMBER" }
- *
- * Description:
- *   Finds an existing registered user by their email address and adds them
- *   as a member to the organization. Only organization ADMINs can add members.
- * --------------------------------------------------------------------------------
- */
+
+// still need to implement this feat:
 export const add_member_by_email = async (req: AuthenticatedRequest, res: Response) => {
     const parsedInput = z.object({
         orgId: z.coerce.number(),

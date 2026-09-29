@@ -285,7 +285,7 @@ server.on("connection", async (socket: WebSocket, req) => {
 
             // ADD COMMENT / CHAT MESSAGE — save to DB, broadcast to board room
             if (parseddata.type === "comment_added") {
-                const { issueId, content, boardID } = parseddata;
+                const { issueId, content, boardID, clientTempId } = parseddata;
 
                 let dbComment: any = null;
                 try {
@@ -334,6 +334,7 @@ server.on("connection", async (socket: WebSocket, req) => {
                                 type: "comment_added",
                                 comment: newComment,
                                 issueId: Number(issueId),
+                                clientTempId: clientTempId || null,
                             })
                         );
                     }

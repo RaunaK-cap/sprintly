@@ -4,17 +4,7 @@ import { prisma_client } from "database";
 import { createBoardSchema, updateBoardSchema } from "../types";
 import { z } from "zod";
 
-/**
- * --------------------------------------------------------------------------------
- * 📋 CREATE BOARD
- * Endpoint: POST /api/v1/boards
- * Body: { title: string, organizationId: number }
- *
- * Description:
- *   Creates a new Kanban board inside a specific organization.
- *   Ensures that only members of the organization can create boards within it.
- * --------------------------------------------------------------------------------
- */
+// create board inside a specific organization
 export const create_board = async (req: AuthenticatedRequest, res: Response) => {
   // Validate request body schema
   const parsedInput = createBoardSchema.safeParse(req.body);
@@ -30,7 +20,6 @@ export const create_board = async (req: AuthenticatedRequest, res: Response) => 
   const currentUserId = req.userId!;
 
   try {
-    // Security check: Verify that the requesting user is a member of this organization
     const membership = await prisma_client.membership.findFirst({
       where: {
         organizationId: Number(organizationId),
@@ -41,11 +30,10 @@ export const create_board = async (req: AuthenticatedRequest, res: Response) => 
     if (!membership) {
       return res.status(403).json({
         success: false,
-        message: "Forbidden: You are not a member of this organization",
+        message: "You are not a member of this organization",
       });
     }
 
-    // Create the new board in the database
     const newBoard = await prisma_client.board.create({
       data: {
         title: title.trim(),
@@ -75,17 +63,7 @@ export const create_board = async (req: AuthenticatedRequest, res: Response) => 
   }
 };
 
-/**
- * --------------------------------------------------------------------------------
- * 📋 GET BOARDS FOR AN ORGANIZATION
- * Endpoint: GET /api/v1/boards?orgId=123
- * Query Params: ?orgId=number
- *
- * Description:
- *   Retrieves all boards belonging to a specific organization.
- *   Includes a count of total issues per board to display on dashboard cards.
- * --------------------------------------------------------------------------------
- */
+/// get all the board to show there 
 export const get_boards = async (req: AuthenticatedRequest, res: Response) => {
   const orgIdParam = req.query.orgId || req.params.orgId;
 
@@ -118,7 +96,7 @@ export const get_boards = async (req: AuthenticatedRequest, res: Response) => {
     if (!membership) {
       return res.status(403).json({
         success: false,
-        message: "Forbidden: You do not have access to this organization's boards",
+        message: "You do not have access to this organization's boards",
       });
     }
 
@@ -130,7 +108,7 @@ export const get_boards = async (req: AuthenticatedRequest, res: Response) => {
       include: {
         _count: {
           select: {
-            issues: true, // Returns { issues: number } count for each board
+            issues: true,
           },
         },
       },
@@ -153,17 +131,9 @@ export const get_boards = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-/**
- * --------------------------------------------------------------------------------
- * 📋 GET SINGLE BOARD BY ID
- * Endpoint: GET /api/v1/boards/:id
- * URL Param: :id (boardId)
- *
- * Description:
- *   Retrieves full details of a specific board, including its organization,
- *   and all its cards/issues categorized into TODO, IN_PROGRESS, DONE.
- * --------------------------------------------------------------------------------
- */
+//full details of a specific board, including its organization,
+//and all its cards/issues categorized into TODO, IN_PROGRESS, DONE.
+
 export const get_board_by_id = async (req: AuthenticatedRequest, res: Response) => {
   const boardId = Number(req.params.id);
 
@@ -247,18 +217,10 @@ export const get_board_by_id = async (req: AuthenticatedRequest, res: Response) 
   }
 };
 
-/**
- * --------------------------------------------------------------------------------
- * 📋 UPDATE / RENAME BOARD
- * Endpoint: PUT /api/v1/boards/:id
- * URL Param: :id (boardId)
- * Body: { title: string }
- *
- * Description:
- *   Updates the title of a board.
- *   Any member of the organization can update the board name.
- * --------------------------------------------------------------------------------
- */
+
+//Updates the title of a board.
+// Any member of the organization can update the board name.
+
 export const update_board = async (req: AuthenticatedRequest, res: Response) => {
   const boardId = Number(req.params.id);
 
@@ -331,17 +293,10 @@ export const update_board = async (req: AuthenticatedRequest, res: Response) => 
   }
 };
 
-/**
- * --------------------------------------------------------------------------------
- * 📋 DELETE BOARD
- * Endpoint: DELETE /api/v1/boards/:id
- * URL Param: :id (boardId)
- *
- * Description:
- *   Deletes a board and all its child issues/comments (cascade).
- *   Only an organization ADMIN can delete a board.
- * --------------------------------------------------------------------------------
- */
+
+//  Deletes a board and all its child issues/comments (cascade).
+//  Only an organization ADMIN can delete a board.
+
 export const delete_board = async (req: AuthenticatedRequest, res: Response) => {
   const boardId = Number(req.params.id);
 
@@ -390,8 +345,7 @@ export const delete_board = async (req: AuthenticatedRequest, res: Response) => 
 
     return res.status(200).json({
       success: true,
-      message: "Board deleted successfully",
-      data: { id: boardId },
+      message: "Board deleted successfully"
     });
   } catch (error) {
     console.error("Error deleting board:", error);

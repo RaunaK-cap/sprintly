@@ -47,6 +47,7 @@ interface CommentType {
   issueId: number;
   userId: number;
   createdAt: string;
+  clientTempId?: string;
   isSystem?: boolean;
   user?: {
     id: number;
@@ -145,6 +146,7 @@ export default function CheckingboardIssuePage() {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [orgs, setOrgs] = useState<OrgType[]>([]);
   const [activeUsers, setActiveUsers] = useState<number[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ id: number; firstname: string; lastname: string; email: string } | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [ws, setWs] = useState<WebSocket | null>(null);
 
@@ -207,6 +209,23 @@ export default function CheckingboardIssuePage() {
     };
     fetchOrgs();
     fetchIssue();
+
+    // Fetch current user for profile and chat authoring
+    const fetchCurrentUser = async () => {
+      try {
+        const token = getAuthToken();
+        if (!token) return;
+        const res = await axios.get(`${NEXT_PUBLIC_API_URL}/api/v1/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data.success && res.data.data) {
+          setCurrentUser(res.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to load user profile:", err);
+      }
+    };
+    fetchCurrentUser();
   }, [fetchIssue, NEXT_PUBLIC_API_URL]);
 
   // WebSocket Connection
@@ -247,10 +266,37 @@ export default function CheckingboardIssuePage() {
             setActiveUsers((prev) => prev.filter((id) => id !== parsed.userID));
           }
 
-          // Realtime Comments
+          // Realtime Comments (Deduplicated with clientTempId reconciliation)
           if (parsed.type === "comment_added" && Number(parsed.issueId) === Number(issueId)) {
             setComments((prev) => {
+              // 1. If this was our own optimistic message, reconcile it by clientTempId
+              if (parsed.clientTempId && prev.some((c) => c.clientTempId === parsed.clientTempId)) {
+                return prev.map((c) => (c.clientTempId === parsed.clientTempId ? parsed.comment : c));
+              }
+
+              // 2. Prevent duplicate by real DB ID
               if (prev.some((c) => c.id === parsed.comment.id)) return prev;
+
+              // 3. Fallback deduplication: If identical content from same author was added within 4s
+              const isRecentDuplicate = prev.some(
+                (c) =>
+                  !c.isSystem &&
+                  c.content === parsed.comment.content &&
+                  (c.userId === parsed.comment.userId || c.userId === 999999 || (currentUser && c.userId === currentUser.id)) &&
+                  Math.abs(new Date(c.createdAt).getTime() - new Date(parsed.comment.createdAt).getTime()) < 4000
+              );
+
+              if (isRecentDuplicate) {
+                return prev.map((c) =>
+                  !c.isSystem &&
+                  c.content === parsed.comment.content &&
+                  (c.userId === parsed.comment.userId || c.userId === 999999 || (currentUser && c.userId === currentUser.id)) &&
+                  Math.abs(new Date(c.createdAt).getTime() - new Date(parsed.comment.createdAt).getTime()) < 4000
+                    ? parsed.comment
+                    : c
+                );
+              }
+
               return [...prev, parsed.comment];
             });
           }
@@ -462,18 +508,21 @@ export default function CheckingboardIssuePage() {
     const content = messageInput.trim();
     if (!content || isOffline) return;
 
-    // Optimistic Message
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+
+    // Optimistic Message (Tagged with clientTempId to prevent double message)
     const tempComment: CommentType = {
       id: Date.now(),
+      clientTempId: tempId,
       content,
       issueId: Number(issueId),
-      userId: 999999,
+      userId: currentUser?.id || 999999,
       createdAt: new Date().toISOString(),
       user: {
-        id: 999999,
-        firstname: "You",
-        lastname: "",
-        email: "",
+        id: currentUser?.id || 999999,
+        firstname: currentUser?.firstname || "You",
+        lastname: currentUser?.lastname || "",
+        email: currentUser?.email || "",
       },
     };
 
@@ -488,6 +537,7 @@ export default function CheckingboardIssuePage() {
           issueId,
           content,
           boardID: bdsid,
+          clientTempId: tempId,
         })
       );
     }
@@ -517,9 +567,9 @@ export default function CheckingboardIssuePage() {
       : { label: "To-Do", dotColor: "bg-blue-400" };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col selection:bg-primary/20 selection:text-foreground">
+    <div className="h-screen max-h-screen bg-background text-foreground font-sans flex flex-col overflow-hidden selection:bg-primary/20 selection:text-foreground">
       {/* Top Bar */}
-      <header className="flex items-center justify-between h-14 px-4 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30">
+      <header className="flex items-center justify-between h-14 px-4 border-b border-border bg-background/80 backdrop-blur-md shrink-0 z-30">
         {/* Left Zone: Nav & Switcher */}
         <div className="flex items-center gap-1 sm:gap-3">
           <Button
@@ -676,7 +726,7 @@ export default function CheckingboardIssuePage() {
       </header>
 
       {/* Breadcrumb Row */}
-      <div className="flex items-center justify-between px-4 sm:px-8 py-2.5 border-b border-border/70 bg-background/50 text-[12px] font-mono text-muted-foreground">
+      <div className="flex items-center justify-between px-4 sm:px-8 py-2.5 border-b border-border/70 bg-background/50 text-[12px] font-mono text-muted-foreground shrink-0">
         <div className="flex items-center gap-2 truncate">
           <button
             onClick={() => router.push(`/checkingboard/${bdsid}`)}
@@ -717,7 +767,7 @@ export default function CheckingboardIssuePage() {
       </div>
 
       {/* Mobile Tab Switcher (Details vs Discussion) */}
-      <div className="lg:hidden flex border-b border-border bg-background">
+      <div className="lg:hidden flex border-b border-border bg-background shrink-0">
         <button
           onClick={() => setMobileTab("details")}
           className={`flex-1 py-2.5 text-[13px] font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
@@ -748,12 +798,12 @@ export default function CheckingboardIssuePage() {
       </div>
 
       {/* Main 2-Column Working Area */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-[1600px] w-full mx-auto">
+      <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden w-full mx-auto">
         {/* LEFT COLUMN: Issue Detail (~62% width) */}
         <div
           className={`${
             mobileTab === "details" ? "flex" : "hidden"
-          } lg:flex flex-col flex-1 lg:w-[62%] border-b lg:border-b-0 lg:border-r border-border overflow-y-auto p-6 sm:p-10`}
+          } lg:flex flex-col flex-1 lg:w-[62%] h-full min-h-0 border-b lg:border-b-0 lg:border-r border-border overflow-y-auto p-6 sm:p-10`}
         >
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -922,9 +972,9 @@ export default function CheckingboardIssuePage() {
         <div
           className={`${
             mobileTab === "discussion" ? "flex" : "hidden"
-          } lg:flex flex-col flex-1 lg:w-[38%] bg-secondary/20 h-full overflow-hidden`}
+          } lg:flex flex-col flex-1 lg:w-[38%] bg-secondary/20 h-full min-h-0 overflow-hidden relative`}
         >
-          {/* Discussion Header */}
+          {/* Discussion Header (Fixed at top of chat) */}
           <div className="flex items-center justify-between h-12 px-4 border-b border-border bg-background/80 shrink-0">
             <div className="flex items-center gap-2">
               <MessageSquare className="size-4 text-muted-foreground" />
@@ -952,11 +1002,11 @@ export default function CheckingboardIssuePage() {
             </div>
           </div>
 
-          {/* Messages Feed */}
+          {/* Messages Feed (Scrolls internally inside chat only) */}
           <div
             ref={chatScrollContainerRef}
             onScroll={handleChatScroll}
-            className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-[300px]"
+            className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-3"
           >
             <AnimatePresence initial={false}>
               {comments.map((comment, index) => {
@@ -985,8 +1035,11 @@ export default function CheckingboardIssuePage() {
                   Math.abs(new Date(comment.createdAt).getTime() - new Date(prevComment.createdAt).getTime()) <
                     120000; // 2 minutes
 
-                const senderName = comment.user?.firstname
-                  ? `${comment.user.firstname} ${comment.user.lastname || ""}`
+                const isMe = (currentUser && comment.userId === currentUser.id) || comment.userId === 999999;
+                const senderName = isMe
+                  ? "You"
+                  : comment.user?.firstname
+                  ? `${comment.user.firstname} ${comment.user.lastname || ""}`.trim()
                   : `User #${comment.userId}`;
 
                 return (
@@ -1000,7 +1053,7 @@ export default function CheckingboardIssuePage() {
                     {/* Avatar (omit if consecutive from same sender) */}
                     <div className="w-6 shrink-0">
                       {!isConsecutive ? (
-                        <div className="size-6 rounded-full bg-foreground text-background flex items-center justify-center text-[10px] font-medium font-mono">
+                        <div className={`size-6 rounded-full flex items-center justify-center text-[10px] font-medium font-mono ${isMe ? "bg-primary text-primary-foreground" : "bg-foreground text-background"}`}>
                           {getInitials(senderName)}
                         </div>
                       ) : (
@@ -1012,7 +1065,7 @@ export default function CheckingboardIssuePage() {
                     <div className="flex-1 flex flex-col min-w-0">
                       {!isConsecutive && (
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[12px] font-semibold text-foreground truncate">
+                          <span className={`text-[12px] font-semibold truncate ${isMe ? "text-primary" : "text-foreground"}`}>
                             {senderName}
                           </span>
                           <span className="text-[10px] font-mono text-muted-foreground">
@@ -1033,7 +1086,7 @@ export default function CheckingboardIssuePage() {
           </div>
 
           {/* Typing Indicator */}
-          <div className="h-5 px-4 flex items-center">
+          <div className="h-5 px-4 flex items-center shrink-0">
             {typingUsers.length > 0 && (
               <motion.span
                 initial={{ opacity: 0 }}
@@ -1046,9 +1099,9 @@ export default function CheckingboardIssuePage() {
             )}
           </div>
 
-          {/* Message Composer */}
-          <div className="p-3 border-t border-border bg-background shrink-0">
-            <form onSubmit={handleSendMessage} className="flex gap-2">
+          {/* Message Composer (PERMANENTLY FIXED AT BOTTOM) */}
+          <div className="p-3 border-t border-border bg-background shrink-0 sticky bottom-0 z-10">
+            <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
               <Textarea
                 value={messageInput}
                 onChange={(e) => handleComposerTyping(e.target.value)}
@@ -1061,12 +1114,12 @@ export default function CheckingboardIssuePage() {
                 disabled={isOffline}
                 placeholder={isOffline ? "Reconnecting to discussion..." : "Write a comment... (Enter to send)"}
                 rows={2}
-                className="min-h-[44px] max-h-28 text-[13px] resize-none bg-secondary/30 border-border rounded-sm focus-visible:ring-primary"
+                className="min-h-[44px] max-h-28 text-[13px] resize-none bg-secondary/30 border-border rounded-sm focus-visible:ring-primary flex-1"
               />
               <Button
                 type="submit"
                 disabled={!messageInput.trim() || isOffline}
-                className="h-[44px] px-3 bg-foreground text-background hover:bg-foreground/90 rounded-sm shrink-0"
+                className="h-[44px] px-3 bg-foreground text-background hover:bg-foreground/90 rounded-sm shrink-0 cursor-pointer"
               >
                 <Send className="size-4" />
               </Button>

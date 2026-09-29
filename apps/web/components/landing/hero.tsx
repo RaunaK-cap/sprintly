@@ -81,7 +81,7 @@ export function Hero() {
     <section className="pt-32 pb-16 md:pt-48 md:pb-32 px-4 md:px-8 max-w-[1280px] mx-auto relative overflow-hidden">
       {/* Optional faint background texture/lines could go here */}
       <div className="absolute inset-0 pointer-events-none opacity-20"
-           style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, var(--line) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, var(--line) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
         {/* Left Copy */}
@@ -98,7 +98,7 @@ export function Hero() {
             Sprintly is a quiet, considered workspace for modern teams. Organize boards, automate workflows, and focus on what actually matters.
           </p>
           <div className="flex items-center gap-6">
-            <Link href="/signup">
+            <Link href="/login">
               <Button size="lg" className="rounded-none px-8">
                 Start free
               </Button>
