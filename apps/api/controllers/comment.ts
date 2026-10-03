@@ -3,18 +3,9 @@ import type { AuthenticatedRequest } from "../middleware/auth";
 import { prisma_client } from "database";
 import { updateCommentSchema } from "../types";
 
-/**
- * --------------------------------------------------------------------------------
- * 💬 UPDATE COMMENT
- * Endpoint: PUT /api/v1/comments/:id
- * URL Param: :id (commentId)
- * Body: { content: string }
- *
- * Description:
- *   Updates the text of an existing comment.
- *   Only the author of the comment can edit it.
- * --------------------------------------------------------------------------------
- */
+
+//Updates the text of an existing comment.
+//Only the author of the comment can edit it.
 export const update_comment = async (req: AuthenticatedRequest, res: Response) => {
   const commentId = Number(req.params.id);
 
@@ -88,17 +79,10 @@ export const update_comment = async (req: AuthenticatedRequest, res: Response) =
   }
 };
 
-/**
- * --------------------------------------------------------------------------------
- * 💬 DELETE COMMENT
- * Endpoint: DELETE /api/v1/comments/:id
- * URL Param: :id (commentId)
- *
- * Description:
- *   Deletes a comment.
- *   Can be deleted by either the author of the comment OR an organization ADMIN.
- * --------------------------------------------------------------------------------
- */
+
+//deletes a comment.
+//Can be deleted by either the author of the comment OR an organization ADMIN.
+
 export const delete_comment = async (req: AuthenticatedRequest, res: Response) => {
   const commentId = Number(req.params.id);
 

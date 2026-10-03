@@ -4,13 +4,65 @@ services:
     image: postgres:14
     container_name: sprintly-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secretfucks
-      POSTGRES_DB: sprintly
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
-
+    networks:
+      - sprintly-networks
+  api:
+    build:
+      context: .
+      dockerfile: apps/dockerfile/docker.api
+    image: sprintly-api:latest
+    container_name: sprintly-api
+    environment:
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL}  
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db  
+    networks:
+      - sprintly-networks
+  websocket:
+    build:
+      context: .
+      dockerfile: apps/dockerfile/docker.ws
+    image: sprintly-ws
+    container_name: sprintly-ws
+    environment:
+      PORT: 8080
+      DATABASE_URL: ${DATABASE_URL}  
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - sprintly-networks
+  web:
+    build:
+      context: .
+      dockerfile: apps/dockerfile/docker.web
+    image: sprintly-web:latest
+    container_name: sprintly-web
+    environment:
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+      - websocket
+      - db
+    networks:
+      - sprintly-networks
 volumes:
   db-data:
+
+networks:
+  sprintly-networks:

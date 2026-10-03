@@ -292,17 +292,9 @@ export const join_org = async (req: AuthenticatedRequest, res: Response) => {
     }
 };
 
-/**
- * --------------------------------------------------------------------------------
- * 🏢 UPDATE ORGANIZATION
- * Endpoint: PUT /api/v1/org/updateorg
- * Body: { orgId: number, name?: string, description?: string }
- *
- * Description:
- *   Updates an organization's name or description.
- *   Only an organization ADMIN can perform this action.
- * --------------------------------------------------------------------------------
- */
+//Updates an organization's name or description.
+// Only an organization ADMIN can perform this action.
+
 export const update_org = async (req: AuthenticatedRequest, res: Response) => {
     const parsedInput = z.object({
         orgId: z.coerce.number(),
@@ -361,17 +353,10 @@ export const update_org = async (req: AuthenticatedRequest, res: Response) => {
     }
 };
 
-/**
- * --------------------------------------------------------------------------------
- * 👥 GET ORGANIZATION MEMBERS
- * Endpoint: GET /api/v1/org/members?orgId=123 (or /api/v1/org/:id/members)
- * Query / Param: orgId
- *
- * Description:
- *   Retrieves all members of an organization with their user profiles and roles.
- *   Useful for member management lists and member picker dropdowns.
- * --------------------------------------------------------------------------------
- */
+
+//  Retrieves all members of an organization with their user profiles and roles.
+//  *   Useful for member management lists and member picker dropdowns.
+
 export const get_org_members = async (req: AuthenticatedRequest, res: Response) => {
     const orgIdParam = req.query.orgId || req.params.orgId || req.params.id;
 
@@ -540,18 +525,11 @@ export const add_member_by_email = async (req: AuthenticatedRequest, res: Respon
     }
 };
 
-/**
- * --------------------------------------------------------------------------------
- * 👥 REMOVE MEMBER FROM ORGANIZATION
- * Endpoint: DELETE /api/v1/org/removemember
- * Body / Query: { orgId: number, userId: number }
- *
- * Description:
- *   Removes a member from an organization.
- *   - Only an ADMIN can remove members.
- *   - An ADMIN cannot remove themselves if they are the sole ADMIN of the org.
- * --------------------------------------------------------------------------------
- */
+//  removes a member from an organization.
+//  only an ADMIN can remove members.
+//  an ADMIN cannot remove themselves if they are the sole ADMIN of the org.
+
+
 export const remove_member = async (req: AuthenticatedRequest, res: Response) => {
     const orgId = Number(req.body.orgId || req.query.orgId);
     const targetUserId = Number(req.body.userId || req.query.userId);

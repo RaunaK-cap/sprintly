@@ -65,7 +65,7 @@ export function AuthSplitLayout({
       </div>
 
       {/* Right panel (Image/Texture side) */}
-      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-bg-inverted rounded-lg">
+      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-background rounded-lg">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/authbg.png"

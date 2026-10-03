@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 
-// 🔑 Auth Schemas
 
 export const signupSchema = z.object({
   firstname: z.string().min(1, "First name is required"),
@@ -16,7 +15,6 @@ export const signinSchema = z.object({
 });
 
 
-// 🏢 Organization & Member Schemas
 
 export const createOrgSchema = z.object({
   name: z.string().min(1, "Organization name is required"),
@@ -48,7 +46,6 @@ export const deleteOrgSchema = z.object({
   orgId: z.coerce.number({ message: "Organization ID is required" }),
 });
 
-// 📋 Board Schemas
 
 export const createBoardSchema = z.object({
   title: z.string().min(1, "Board title is required"),
@@ -60,7 +57,6 @@ export const updateBoardSchema = z.object({
 });
 
 
-// 🏷️ Issue (Card) Schemas
 
 export const issueStatusEnum = z.enum(["TODO", "IN_PROGRESS", "DONE"]);
 
@@ -80,14 +76,12 @@ export const moveIssueStatusSchema = z.object({
   status: issueStatusEnum,
 });
 
-// 👥 Issue Assignee Schemas
 
 export const addAssigneeSchema = z.object({
   issueId: z.number({ message: "Issue ID is required" }),
   userId: z.number({ message: "User ID is required" }),
 });
 
-// 💬 Comment Schemas
 
 export const createCommentSchema = z.object({
   content: z.string().min(1, "Comment content cannot be empty"),
@@ -98,7 +92,7 @@ export const updateCommentSchema = z.object({
   content: z.string().min(1, "Comment content cannot be empty"),
 });
 
-// 🏷️ Inferred TypeScript Types
+
 
 export type SignupInput = z.infer<typeof signupSchema>;
 export type SigninInput = z.infer<typeof signinSchema>;

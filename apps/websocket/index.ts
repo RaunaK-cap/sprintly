@@ -134,7 +134,7 @@ server.on("connection", async (socket: WebSocket, req) => {
                     socket: socket,
                 });
 
-                console.log(`User ${userid} joined board room ${boardID}`);
+                // console.log(`User ${userid} joined board room ${boardID}`);
 
                 // Fetch all issues for THIS BOARD from DB, push into global ISSUES if not already there
                 try {
@@ -156,7 +156,7 @@ server.on("connection", async (socket: WebSocket, req) => {
                         }
                     });
                 } catch (error) {
-                    console.log("DB Fetch fallback:", error);
+                    // console.log("DB Fetch fallback:", error);
                 }
 
                 // Send initial_state with only THIS BOARD's issues to the joining user
@@ -184,9 +184,9 @@ server.on("connection", async (socket: WebSocket, req) => {
                             userId: userid,
                         }
                     });
-                    console.log(`DB Created Issue ${dbIssue.id}`);
+                    // console.log(`DB Created Issue ${dbIssue.id}`);
                 } catch (dbErr) {
-                    console.log("DB create issue error:", dbErr);
+                    // console.log("DB create issue error:", dbErr);
                 }
 
                 const newIssue: Issue = {
@@ -198,7 +198,7 @@ server.on("connection", async (socket: WebSocket, req) => {
                 };
 
                 ISSUES.push(newIssue);
-                console.log(`Issue created by User ${userid}:`, newIssue);
+                // console.log(`Issue created by User ${userid}:`, newIssue);
 
                 // Broadcast to only members in this board room
                 const targetRoom = ROOMS[boardID] || [];
@@ -224,9 +224,9 @@ server.on("connection", async (socket: WebSocket, req) => {
                         where: { id: Number(issueId) },
                         data: { status: newStatus }
                     });
-                    console.log(`DB Updated Issue ${issueId} to status: ${newStatus}`);
+                    // console.log(`DB Updated Issue ${issueId} to status: ${newStatus}`);
                 } catch (dbErr) {
-                    console.log("DB update issue error:", dbErr);
+                    // console.log("DB update issue error:", dbErr);
                 }
 
                 // Update in memory ISSUES array
@@ -234,7 +234,7 @@ server.on("connection", async (socket: WebSocket, req) => {
                     item.id === Number(issueId) ? { ...item, status: newStatus } : item
                 );
 
-                console.log(`User ${userid} moved Issue ${issueId} to status: ${newStatus}`);
+                // console.log(`User ${userid} moved Issue ${issueId} to status: ${newStatus}`);
 
                 // Broadcast to only members in this board room
                 const targetRoom = ROOMS[boardID] || [];
@@ -260,14 +260,14 @@ server.on("connection", async (socket: WebSocket, req) => {
                     await prisma_client.issue.delete({
                         where: { id: Number(issueId) }
                     });
-                    console.log(`DB Deleted Issue ${issueId}`);
+                    // console.log(`DB Deleted Issue ${issueId}`);
                 } catch (dbErr) {
-                    console.log("DB delete issue error:", dbErr);
+                    // console.log("DB delete issue error:", dbErr);
                 }
 
                 // Remove from memory ISSUES array
                 ISSUES = ISSUES.filter((item) => item.id !== Number(issueId));
-                console.log(`User ${userid} deleted Issue ${issueId}`);
+                // console.log(`User ${userid} deleted Issue ${issueId}`);
 
                 // Broadcast to only members in this board room
                 const targetRoom = ROOMS[boardID] || [];
@@ -306,9 +306,9 @@ server.on("connection", async (socket: WebSocket, req) => {
                             }
                         }
                     });
-                    console.log(`DB Created Comment ${dbComment.id} on Issue ${issueId}`);
+                    // console.log(`DB Created Comment ${dbComment.id} on Issue ${issueId}`);
                 } catch (dbErr) {
-                    console.log("DB create comment error:", dbErr);
+                    // console.log("DB create comment error:", dbErr);
                 }
 
                 const newComment = dbComment || {
@@ -376,9 +376,9 @@ server.on("connection", async (socket: WebSocket, req) => {
                         where: { id: Number(issueId) },
                         data: updateData
                     });
-                    console.log(`DB Updated Issue ${issueId}`);
+                    // console.log(`DB Updated Issue ${issueId}`);
                 } catch (dbErr) {
-                    console.log("DB update issue error:", dbErr);
+                    // console.log("DB update issue error:", dbErr);
                 }
 
                 // Update in memory ISSUES
@@ -419,7 +419,7 @@ server.on("connection", async (socket: WebSocket, req) => {
             const userexisted = users.find((u) => u.socket === socket);
 
             if (userexisted) {
-                console.log(`User ${userexisted.userID} left room ${roomid}`);
+                // console.log(`User ${userexisted.userID} left room ${roomid}`);
 
                 ROOMS[roomid] = users.filter((u) => u.socket !== socket);
 
@@ -442,4 +442,4 @@ server.on("connection", async (socket: WebSocket, req) => {
     });
 });
 
-console.log(`WebSocket server is running on ws://localhost:${PORT}`);
+// console.log(`WebSocket server is running on ws://localhost:${PORT}`);
