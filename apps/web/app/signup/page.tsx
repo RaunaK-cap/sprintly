@@ -56,13 +56,13 @@ export default function SignupPage() {
   return (
     <AuthSplitLayout headerLinkText="Sign in" headerLinkHref="/login">
       <div className="flex flex-col gap-6 w-full">
-        <h1 className="text-[28px] font-semibold text-foreground tracking-tight leading-tight mb-2">
+        <h1 className="font-mono text-[26px] font-semibold text-foreground tracking-tight leading-tight mb-2">
           Create your account
         </h1>
 
         {/* OAuth Buttons */}
         <div className="flex flex-col gap-3">
-          <Button type="button" variant="outline" className="w-full relative bg-white border-border text-foreground hover:bg-muted/50 rounded-sm">
+          <Button type="button" variant="outline" className="w-full relative rounded-none border-border bg-card text-foreground hover:bg-card">
             <svg viewBox="0 0 24 24" className="size-4 absolute left-4" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -71,7 +71,7 @@ export default function SignupPage() {
             </svg>
             Sign up with Google
           </Button>
-          <Button type="button" variant="outline" className="w-full relative bg-white border-border text-foreground hover:bg-muted/50 rounded-sm">
+          <Button type="button" variant="outline" className="w-full relative rounded-none border-border bg-card text-foreground hover:bg-card">
             <svg viewBox="0 0 24 24" className="size-4 absolute left-4" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
@@ -82,7 +82,7 @@ export default function SignupPage() {
         {/* Divider */}
         <div className="relative flex items-center py-2">
           <Separator className="flex-1 bg-border/60" />
-          <span className="mx-4 text-[13px] text-muted-foreground lowercase">or</span>
+          <span className="mx-4 font-mono text-[13px] text-muted-foreground lowercase">or</span>
           <Separator className="flex-1 bg-border/60" />
         </div>
 
@@ -96,7 +96,7 @@ export default function SignupPage() {
               onChange={handleChange}
               required
               placeholder="First name"
-              className="h-11 rounded-sm border-border bg-white placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:ring-1"
+              className="h-11 rounded-none border-border bg-card placeholder:text-muted-foreground focus-visible:ring-foreground focus-visible:ring-1"
             />
             <Input
               type="text"
@@ -105,7 +105,7 @@ export default function SignupPage() {
               onChange={handleChange}
               required
               placeholder="Last name"
-              className="h-11 rounded-sm border-border bg-white placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:ring-1"
+              className="h-11 rounded-none border-border bg-card placeholder:text-muted-foreground focus-visible:ring-foreground focus-visible:ring-1"
             />
           </div>
           <Input
@@ -115,7 +115,7 @@ export default function SignupPage() {
             onChange={handleChange}
             required
             placeholder="Email"
-            className="h-11 rounded-sm border-border bg-white placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:ring-1"
+            className="h-11 rounded-none border-border bg-card placeholder:text-muted-foreground focus-visible:ring-foreground focus-visible:ring-1"
           />
           <div className="relative">
             <Input
@@ -125,7 +125,7 @@ export default function SignupPage() {
               onChange={handleChange}
               required
               placeholder="Password"
-              className="h-11 rounded-sm border-border bg-white placeholder:text-muted-foreground focus-visible:ring-primary focus-visible:ring-1 pr-10"
+              className="h-11 rounded-none border-border bg-card placeholder:text-muted-foreground focus-visible:ring-foreground focus-visible:ring-1 pr-10"
             />
             <button
               type="button"
@@ -148,7 +148,7 @@ export default function SignupPage() {
           </p>
 
           {/* Submit Button */}
-          <Button disabled={isLoading} type="submit" className="w-full h-11 bg-foreground text-background hover:bg-foreground/90 rounded-sm mt-2 flex items-center justify-center gap-2">
+          <Button disabled={isLoading} type="submit" className="w-full h-11 bg-foreground text-background hover:bg-foreground rounded-none mt-2 flex items-center justify-center gap-2">
             {isLoading ? "Creating account..." : "Create account"}
             {!isLoading && <ArrowRight className="size-4" />}
           </Button>

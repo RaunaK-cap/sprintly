@@ -2,70 +2,163 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useScroll, useTransform, motion } from "motion/react";
+import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
+import { ArrowRight, Hexagon, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
 
-import { Hexagon } from "lucide-react";
+const NAV_LINKS = [
+  { label: "Features", href: "#features" },
+  { label: "Showcase", href: "#showcase" },
+  { label: "Why Sprintly", href: "#compare" },
+];
 
 export function Navigation() {
   const { scrollY } = useScroll();
-  
-  // Transition background from transparent to solid after 80px scroll
-  const background = useTransform(
-    scrollY,
-    [0, 80],
-    ["rgba(246, 245, 241, 0)", "rgba(246, 245, 241, 1)"]
-  );
-  
-  const borderBottom = useTransform(
-    scrollY,
-    [0, 80],
-    ["1px solid rgba(222, 219, 210, 0)", "1px solid rgba(222, 219, 210, 1)"]
-  );
+  const [scrolled, setScrolled] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+
+  useMotionValueEvent(scrollY, "change", (latest) => setScrolled(latest > 16));
+
+  // The header floats over the hero sky until scrolled — invert to white there.
+  const onSky = !scrolled && !menuOpen;
 
   return (
     <motion.header
-      style={{ background, borderBottom }}
-      className="fixed top-0 left-0 right-0 z-50 transition-colors duration-200"
+      initial={{ y: -16, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className={cn(
+        "fixed inset-x-0 top-0 z-50 transition-colors duration-300",
+        scrolled || menuOpen
+          ? "border-b border-border bg-background/50 backdrop-blur-xl"
+          : "border-b border-transparent bg-transparent"
+      )}
     >
-      <div className="max-w-[1280px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex items-center justify-center size-7 bg-foreground rounded-[4px]">
-            <Hexagon className="size-4 text-background fill-background" />
+      <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-6 md:px-8">
+        <Link
+          href="/"
+          className="flex items-center gap-2"
+          onClick={() => setMenuOpen(false)}
+        >
+          <div
+            className={cn(
+              "flex size-7 items-center justify-center rounded-none",
+              onSky ? "bg-white" : "bg-foreground"
+            )}
+          >
+            <Hexagon
+              className={cn(
+                "size-4",
+                onSky ? "fill-neutral-950 text-neutral-950" : "fill-background text-background"
+              )}
+            />
           </div>
-          <span className="font-sans font-medium text-lg tracking-tight">Sprintly</span>
+          <span
+            className={cn(
+              "text-lg font-medium tracking-tight",
+              onSky ? "text-white" : "text-foreground"
+            )}
+          >
+            Sprintly
+          </span>
         </Link>
 
-        {/* Center Nav */}
-        <nav className="hidden md:flex items-center gap-8">
-          <Link href="#product" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Product
-          </Link>
-          <Link href="#templates" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Templates
-          </Link>
-          <Link href="#resources" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Resources
-          </Link>
-          <Link href="#company" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Company
-          </Link>
+        <nav className="hidden items-center gap-8 md:flex">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "text-sm font-medium transition-colors",
+                onSky
+                  ? "text-white/80 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
-        {/* Right Nav */}
-        <div className="flex items-center gap-4">
-          <Link href="/login" className="hidden sm:block text-sm font-medium hover:text-muted-foreground transition-colors">
-            Sign In
+        <div className="flex items-center gap-1.5">
+          <ThemeToggle className={onSky ? "text-white/80 hover:bg-white/10 hover:text-white" : undefined} />
+          <Link
+            href="/login"
+            className={cn(
+              "hidden px-3 text-sm font-medium transition-colors sm:block",
+              onSky
+                ? "text-white/80 hover:text-white"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Sign in
           </Link>
-          <Link href="/signup">
-            <Button className="rounded-none">
-              Get Started
-            </Button>
-          </Link>
+          <Button
+            className={cn(
+              "hidden rounded-none sm:inline-flex",
+              onSky
+                ? "bg-white text-neutral-950 hover:bg-white"
+                : "bg-foreground text-background hover:bg-foreground"
+            )}
+            nativeButton={false}
+            render={<Link href="/signup" />}
+          >
+            Get started
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            className={cn("md:hidden", onSky && "text-white hover:bg-white/10 hover:text-white")}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? <X /> : <Menu />}
+          </Button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="overflow-hidden border-t border-border bg-background/95 backdrop-blur-xl md:hidden"
+          >
+            <div className="flex flex-col px-6 py-4">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Sign in
+              </Link>
+              <Button
+                className="mt-3 rounded-none bg-foreground text-background hover:bg-foreground"
+                nativeButton={false}
+                render={<Link href="/signup" />}
+                onClick={() => setMenuOpen(false)}
+              >
+                Get started
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
   );
 }
-

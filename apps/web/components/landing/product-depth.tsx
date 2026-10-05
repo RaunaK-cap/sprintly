@@ -1,165 +1,261 @@
 "use client";
 
 import * as React from "react";
-import { motion, useInView } from "motion/react";
+import { motion, useInView, useReducedMotion } from "motion/react";
+import { ArrowRight, Check, Command, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Check, Search, Command } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function ProductDepth() {
-  const ref = React.useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+const QUERY = "Mark #212 complete";
+
+function CommandPalette({ active }: { active: boolean }) {
+  const prefersReducedMotion = useReducedMotion();
+  const [chars, setChars] = React.useState(0);
+  const [showResult, setShowResult] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!active) return;
+    if (prefersReducedMotion) {
+      setChars(QUERY.length);
+      setShowResult(true);
+      return;
+    }
+    let timeout: number;
+    if (chars < QUERY.length) {
+      timeout = window.setTimeout(() => setChars((c) => c + 1), 85);
+    } else if (!showResult) {
+      timeout = window.setTimeout(() => setShowResult(true), 400);
+    } else {
+      timeout = window.setTimeout(() => {
+        setChars(0);
+        setShowResult(false);
+      }, 2400);
+    }
+    return () => window.clearTimeout(timeout);
+  }, [chars, showResult, active, prefersReducedMotion]);
 
   return (
-    <section className="py-24 px-4 md:px-8 max-w-[1280px] mx-auto overflow-hidden">
-      <div className="grid lg:grid-cols-12 gap-12 items-center">
-        
-        {/* Left text column */}
-        <div className="lg:col-span-4">
-          <h2 className="text-[28px] md:text-[32px] font-semibold text-foreground mb-4 leading-tight tracking-tight">
-            Designed for velocity.
-          </h2>
-          <p className="text-[15px] text-muted-foreground leading-relaxed mb-8">
-            Stop fighting your tools. Sprintly&apos;s interface gets out of your way so you can focus on shipping. Keyboard-first navigation, instant sync, and zero clutter.
-          </p>
-          <ul className="flex flex-col gap-3.5 mb-8">
-            {[
-              "Command palette for everything",
-              "Real-time multiplayer presence",
-              "Sub-50ms optimistic interactions"
-            ].map((feature, i) => (
-              <li key={i} className="flex items-center gap-3 text-[14px] text-foreground">
-                <span className="size-1.5 bg-primary rounded-full shrink-0" />
-                {feature}
-              </li>
-            ))}
-          </ul>
-          <Button variant="outline" className="rounded-[2px] h-10 px-5 text-[13px] font-medium border-border">
-            View Documentation
-          </Button>
+    <motion.div
+      initial={{ opacity: 0, y: -8, scale: 0.98 }}
+      animate={active ? { opacity: 1, y: 0, scale: 1 } : {}}
+      transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      className="absolute left-1/2 top-6 z-20 w-[300px] -translate-x-1/2 sm:w-[340px]"
+    >
+      <div className="overflow-hidden rounded-none border border-border bg-card shadow-xl shadow-foreground/10">
+        <div className="flex items-center gap-2.5 border-b border-border px-3.5 py-3">
+          <Search className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="flex-1 truncate text-[12.5px]">
+            {QUERY.slice(0, chars)}
+            {!showResult && chars < QUERY.length && (
+              <motion.span
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ duration: 0.9, repeat: Infinity }}
+                className="ml-0.5 inline-block h-3.5 w-px translate-y-0.5 bg-foreground"
+              />
+            )}
+          </span>
+          <span className="flex items-center gap-0.5 rounded-none border border-border px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
+            <Command className="size-2" />K
+          </span>
         </div>
-
-        {/* Right Product Mockup Window */}
-        <motion.div 
-          ref={ref}
-          initial={{ opacity: 0, x: 30 }}
-          animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="lg:col-span-8 bg-[#FAF9F5] border border-border p-4 md:p-6 flex items-center justify-center relative min-h-[420px]"
-        >
-          {/* App Window */}
-          <div className="w-full max-w-2xl bg-white border border-border shadow-sm flex flex-col rounded-[3px] overflow-hidden">
-            
-            {/* Window Header */}
-            <div className="h-10 border-b border-border flex items-center justify-between px-3.5 bg-[#FAF9F6]">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="size-2.5 rounded-full bg-border" />
-                  <div className="size-2.5 rounded-full bg-border" />
-                  <div className="size-2.5 rounded-full bg-border" />
-                </div>
-                <div className="h-3 w-px bg-border/80 mx-1" />
-                <span className="text-[11px] font-mono text-muted-foreground">sprintly.app / acme / core-sprint</span>
-              </div>
-
-              <div className="flex items-center gap-1.5 bg-white border border-border px-2 py-1 rounded-[2px] text-[10px] font-mono text-muted-foreground shadow-[0_1px_1px_rgba(0,0,0,0.02)]">
-                <Search className="size-2.5" />
-                <span>Quick jump...</span>
-                <span className="flex items-center text-[9px] bg-muted/50 px-1 rounded border border-border/40 ml-1">
-                  <Command className="size-2 mr-0.5" />K
-                </span>
-              </div>
+        <div className="p-1.5">
+          <div
+            className={cn(
+              "flex items-center justify-between rounded-none px-2.5 py-2 transition-colors duration-200",
+              showResult ? "bg-foreground/10" : "bg-transparent"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] text-muted-foreground">#212</span>
+              <span className="text-[12px] font-medium">Move to Done</span>
             </div>
-
-            {/* Window Body */}
-            <div className="flex-1 flex overflow-hidden min-h-[320px]">
-              
-              {/* Left Mini Sidebar */}
-              <div className="w-44 border-r border-border p-3 flex flex-col gap-3 bg-[#FCFCFA] shrink-0">
-                <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-                  Active Boards
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between px-2 py-1.5 rounded-[2px] bg-foreground/5 border border-foreground/10 text-[12px] font-medium text-foreground">
-                    <span className="truncate">Core Sprint 12</span>
-                    <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  </div>
-
-                  <div className="px-2 py-1.5 rounded-[2px] text-[12px] text-muted-foreground hover:text-foreground transition-colors">
-                    <span>Design Tokens</span>
-                  </div>
-
-                  <div className="px-2 py-1.5 rounded-[2px] text-[12px] text-muted-foreground hover:text-foreground transition-colors">
-                    <span>API Integrations</span>
-                  </div>
-                </div>
-
-                <div className="mt-auto pt-2 border-t border-border flex items-center gap-2">
-                  <div className="size-5 rounded-full bg-foreground text-background flex items-center justify-center text-[9px] font-mono font-bold">
-                    RK
-                  </div>
-                  <span className="text-[11px] font-medium text-foreground truncate">Raunak K.</span>
-                </div>
-              </div>
-
-              {/* Right Work Area */}
-              <div className="flex-1 p-4 flex flex-col gap-3 bg-white">
-                
-                {/* Board Subheader */}
-                <div className="flex items-center justify-between pb-2 border-b border-border/60">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-semibold text-foreground">#104 · WebSocket presence engine</span>
-                    <span className="text-[10px] font-mono bg-muted/60 text-foreground px-1.5 py-0.5 rounded border border-border">IN PROGRESS</span>
-                  </div>
-                  <div className="flex -space-x-1">
-                    <div className="size-5 rounded-full bg-foreground text-background border border-white flex items-center justify-center text-[8px] font-mono font-bold">RK</div>
-                    <div className="size-5 rounded-full bg-muted text-foreground border border-white flex items-center justify-center text-[8px] font-mono font-bold">SJ</div>
-                  </div>
-                </div>
-
-                {/* Issue Details Box */}
-                <div className="border border-border p-3 rounded-[2px] bg-[#FAF9F6] flex flex-col gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                  <div className="text-[12px] text-foreground leading-relaxed">
-                    Optimize real-time card transitions with optimistic updates and room broadcast listeners.
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-[11px] font-mono text-muted-foreground pt-1 border-t border-border/50">
-                    <span>Priority: <strong className="text-foreground font-medium">High</strong></span>
-                    <span>Assignee: <strong className="text-foreground font-medium">Raunak</strong></span>
-                    <span>Sprint: <strong className="text-foreground font-medium">v1.2</strong></span>
-                  </div>
-                </div>
-
-                {/* Acceptance Criteria Sub-tasks */}
-                <div className="flex flex-col gap-1.5 pt-1">
-                  <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Acceptance Criteria</span>
-                  
-                  <div className="flex items-center gap-2 text-[12px] text-foreground">
-                    <div className="size-3.5 rounded-[2px] bg-foreground text-background flex items-center justify-center">
-                      <Check className="size-2.5 stroke-[3]" />
-                    </div>
-                    <span>Multi-tab session isolation via sessionStorage</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[12px] text-foreground">
-                    <div className="size-3.5 rounded-[2px] bg-foreground text-background flex items-center justify-center">
-                      <Check className="size-2.5 stroke-[3]" />
-                    </div>
-                    <span>3-second polling fallback sync</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                    <div className="size-3.5 rounded-[2px] border border-border bg-background" />
-                    <span>Cross-organization room isolation</span>
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
+            <Check
+              className={cn(
+                "size-3.5 text-foreground transition-opacity duration-200",
+                showResult ? "opacity-100" : "opacity-0"
+              )}
+            />
           </div>
-        </motion.div>
+          <div className="flex items-center gap-2 rounded-none px-2.5 py-2">
+            <span className="font-mono text-[10px] text-muted-foreground">#208</span>
+            <span className="text-[12px] text-muted-foreground">Assign to Leo</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
+export function ProductDepth() {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-100px" });
+
+  return (
+    <section id="showcase" className="scroll-mt-24 py-24 md:py-32">
+      <div className="mx-auto w-full max-w-[1200px] px-6 md:px-8">
+        <div className="grid items-center gap-12 lg:grid-cols-12">
+          {/* Copy */}
+          <div className="lg:col-span-4">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+              Showcase
+            </p>
+            <h2 className="mt-3 text-balance text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
+              Designed for velocity.
+            </h2>
+            <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground">
+              Stop fighting your tools. Sprintly gets out of your way so you can
+              focus on shipping — keyboard-first navigation, instant sync, zero clutter.
+            </p>
+            <ul className="mt-7 flex flex-col gap-3.5">
+              {[
+                "Command palette for everything",
+                "Real-time multiplayer presence",
+                "Sub-50 ms optimistic interactions",
+              ].map((feature) => (
+                <li key={feature} className="flex items-center gap-3 text-sm">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-none bg-foreground/10">
+                    <Check className="size-3 text-foreground" />
+                  </span>
+                  {feature}
+                </li>
+              ))}
+            </ul>
+            <Button
+              variant="outline"
+              className="mt-8 rounded-none bg-card hover:bg-card"
+              nativeButton={false}
+              render={<a href="#features" />}
+            >
+              Explore features
+              <ArrowRight data-icon="inline-end" />
+            </Button>
+          </div>
+
+          {/* Product window */}
+          <motion.div
+            ref={ref}
+            initial={{ opacity: 0, y: 32 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="relative lg:col-span-8"
+          >
+            <div className="relative flex min-h-[440px] items-center justify-center rounded-none border border-border bg-muted/30 p-4 md:p-8">
+              <CommandPalette active={inView} />
+
+              <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-none border border-border bg-card shadow-sm">
+                {/* Window header */}
+                <div className="flex h-10 items-center justify-between border-b border-border bg-background/60 px-3.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1.5">
+                      <span className="size-2.5 rounded-full bg-border" />
+                      <span className="size-2.5 rounded-full bg-border" />
+                      <span className="size-2.5 rounded-full bg-border" />
+                    </div>
+                    <span className="hidden font-mono text-[10.5px] text-muted-foreground sm:block">
+                      sprintly.app / acme / core-sprint
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-none border border-border bg-card px-2 py-1 font-mono text-[9.5px] text-muted-foreground shadow-xs">
+                    <Search className="size-2.5" />
+                    Quick jump…
+                  </div>
+                </div>
+
+                <div className="flex overflow-hidden">
+                  {/* Sidebar */}
+                  <div className="hidden w-44 shrink-0 flex-col gap-3 border-r border-border bg-background/40 p-3 sm:flex">
+                    <span className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground">
+                      Active boards
+                    </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between rounded-none border border-border bg-card px-2 py-1.5 text-[12px] font-medium shadow-xs">
+                        <span className="truncate">Core Sprint 12</span>
+                        <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                      </div>
+                      <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
+                        Design Tokens
+                      </div>
+                      <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
+                        API Integrations
+                      </div>
+                    </div>
+                    <div className="mt-auto flex items-center gap-2 border-t border-border pt-2">
+                      <div className="flex size-5 items-center justify-center rounded-full bg-foreground text-[8px] font-semibold text-background">
+                        RK
+                      </div>
+                      <span className="truncate text-[11px] font-medium">Raunak K.</span>
+                    </div>
+                  </div>
+
+                  {/* Issue panel */}
+                  <div className="flex flex-1 flex-col gap-3 p-4">
+                    <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-[13px] font-semibold">
+                          #104 · WebSocket presence engine
+                        </span>
+                        <span className="shrink-0 rounded-none border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-[9px] uppercase">
+                          In progress
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 -space-x-1">
+                        <div className="flex size-5 items-center justify-center rounded-full bg-foreground text-[8px] font-semibold text-background ring-2 ring-card">
+                          RK
+                        </div>
+                        <div className="flex size-5 items-center justify-center rounded-full bg-muted-foreground text-[8px] font-semibold text-background ring-2 ring-card">
+                          SJ
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-none border border-border bg-background/60 p-3">
+                      <p className="text-[12px] leading-relaxed text-foreground/90">
+                        Optimize real-time card transitions with optimistic updates
+                        and room broadcast listeners.
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/50 pt-2 font-mono text-[10px] text-muted-foreground">
+                        <span>
+                          Priority: <strong className="font-medium text-foreground">High</strong>
+                        </span>
+                        <span>
+                          Assignee: <strong className="font-medium text-foreground">Raunak</strong>
+                        </span>
+                        <span>
+                          Sprint: <strong className="font-medium text-foreground">v1.2</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <span className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground">
+                        Acceptance criteria
+                      </span>
+                      {[
+                        { label: "Multi-tab session isolation", done: true },
+                        { label: "3-second polling fallback sync", done: true },
+                        { label: "Cross-organization room isolation", done: false },
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-center gap-2 text-[12px]">
+                          <span
+                            className={cn(
+                              "flex size-3.5 shrink-0 items-center justify-center rounded-none border",
+                              item.done ? "border-foreground bg-foreground" : "border-border bg-card"
+                            )}
+                          >
+                            {item.done && <Check className="size-2.5 stroke-[3] text-background" />}
+                          </span>
+                          <span className={item.done ? "text-foreground" : "text-muted-foreground"}>
+                            {item.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

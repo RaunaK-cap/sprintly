@@ -24,7 +24,7 @@ export function AuthSplitLayout({
         {/* Header */}
         <header className="flex h-20 w-full items-center justify-between px-8 pt-8">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex items-center justify-center size-7 bg-foreground rounded-[4px]">
+            <div className="flex items-center justify-center size-7 rounded-none bg-foreground">
               <Hexagon className="size-4 text-background fill-background" />
             </div>
             <span className="font-sans font-medium text-lg tracking-tight">Sprintly</span>
@@ -35,7 +35,7 @@ export function AuthSplitLayout({
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="text-muted-foreground hover:text-foreground h-9 w-9 rounded-sm shrink-0"
+              className="text-muted-foreground hover:text-foreground h-9 w-9 rounded-none shrink-0"
             >
               <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -65,13 +65,24 @@ export function AuthSplitLayout({
       </div>
 
       {/* Right panel (Image/Texture side) */}
-      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-background rounded-lg">
+      <div className="relative hidden overflow-hidden border-l border-border lg:block lg:w-[55%]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/authbg.png"
           alt="Sprintly"
-          className="absolute inset-0 w-[950px] h-[860px] ml-1 mt-2 rounded-xl object-cover"
+          className="absolute inset-0 h-full w-full object-cover"
         />
+        {/* Blend the image into the form side and theme surface */}
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-background via-background/20 to-transparent" />
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-background/85 via-background/40 to-transparent" />
+        <div className="absolute bottom-8 left-8 flex flex-col gap-1.5">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground/80">
+            Sprintly — move work forward
+          </p>
+          <p className="max-w-xs text-sm leading-relaxed text-foreground/70">
+            One calm board for your tasks, teammates, and tools.
+          </p>
+        </div>
       </div>
     </div>
   );

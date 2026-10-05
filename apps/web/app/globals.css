@@ -8,7 +8,7 @@
   /* Direction A - Warm Neutral */
   --background: #F6F5F1;
   --foreground: #171613;
-  --card: #F6F5F1;
+  --card: #FBFAF8;
   --card-foreground: #171613;
   --popover: #F6F5F1;
   --popover-foreground: #171613;
@@ -43,7 +43,7 @@
   /* Inverted fallback if dark mode is toggled */
   --background: #111110;
   --foreground: #F6F5F1;
-  --card: #111110;
+  --card: #161614;
   --card-foreground: #F6F5F1;
   --popover: #111110;
   --popover-foreground: #F6F5F1;
@@ -62,30 +62,6 @@
   --ring: #33322E;
   
   --bg-inverted: #F6F5F1;
-}
-
-.force-light {
-  --background: #F6F5F1;
-  --foreground: #171613;
-  --card: #F6F5F1;
-  --card-foreground: #171613;
-  --popover: #F6F5F1;
-  --popover-foreground: #171613;
-  --primary: #E8532A;
-  --primary-foreground: #FFFFFF;
-  --secondary: #EAE9E4;
-  --secondary-foreground: #171613;
-  --muted: #EAE9E4;
-  --muted-foreground: #6E6B63;
-  --accent: #EAE9E4;
-  --accent-foreground: #171613;
-  --destructive: #EF4444;
-  --destructive-foreground: #FFFFFF;
-  --border: #DEDBD2;
-  --input: #DEDBD2;
-  --ring: #DEDBD2;
-  --bg-inverted: #111110;
-  color-scheme: light;
 }
 
 body {
@@ -132,6 +108,22 @@ body {
   
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+@theme {
+  --animate-marquee: marquee 42s linear infinite;
+
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
 }
 
 @layer base {
