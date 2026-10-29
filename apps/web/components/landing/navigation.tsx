@@ -97,7 +97,7 @@ export function Navigation() {
           </Link>
           <Button
             className={cn(
-              "hidden rounded-none sm:inline-flex",
+              "hidden rounded-none sm:inline-flex font-normal",
               onSky
                 ? "bg-white text-neutral-950 hover:bg-white"
                 : "bg-foreground text-background hover:bg-foreground"

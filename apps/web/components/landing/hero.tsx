@@ -177,7 +177,7 @@ export function Hero() {
           >
             <Button
               size="default"
-              className="h-10 px-7 text-sm font-mono bg-white text-black rounded-none font-normal hover:bg-white"
+              className="h-10  px-5  text-sm font-mono bg-white text-black rounded-none font-normal hover:bg-white"
               variant={"secondary"}
               nativeButton={false}
               render={<Link href="/signup" />}
