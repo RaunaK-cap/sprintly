@@ -2,6 +2,7 @@ import type { Response } from "express";
 import type { AuthenticatedRequest } from "../middleware/auth";
 import { createOrgSchema, getOrgSchema, deleteOrgSchema, addMemberSchema } from "../types";
 import { prisma_client } from "database";
+import { sendError } from "../lib/errors";
 import { z } from "zod";
 
 export const create_org = async (req: AuthenticatedRequest, res: Response) => {
@@ -17,38 +18,39 @@ export const create_org = async (req: AuthenticatedRequest, res: Response) => {
     const { name, description } = parsedInput.data;
 
     try {
-        const org = await prisma_client.organization.create({
-            data: {
-                name: name,
-                description: description,
-                memberships: {
-                    create: {
-                        userId: req.userId!,
-                        role: "ADMIN",
+        // Org + admin membership + default board are created together.
+        // The board id is left to the database sequence (do not reuse org.id).
+        const org = await prisma_client.$transaction(async (tx) => {
+            const createdOrg = await tx.organization.create({
+                data: {
+                    name,
+                    description,
+                    memberships: {
+                        create: {
+                            userId: req.userId!,
+                            role: "ADMIN",
+                        }
                     }
                 }
-            }
+            });
+
+            await tx.board.create({
+                data: {
+                    title: `${name} Board`,
+                    organizationId: createdOrg.id,
+                }
+            });
+
+            return createdOrg;
         });
 
-
-        await prisma_client.board.create({
-            data: {
-                id: org.id,
-                title: `${name} Board`,
-                organizationId: org.id,
-            }
-        });
-
-        return res.status(200).json({
+        return res.status(201).json({
             success: true,
             message: "Organization created successfully",
             data: org,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error creating organization",
-        });
+        return sendError(res, error, "Internal server error creating organization");
     }
 };
 
@@ -141,32 +143,33 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
     const orgId = parseddata.data.orgId;
 
     try {
-        // Check if the user is a member of the org
+        // Only an ADMIN can delete an organization.
         const membership = await prisma_client.membership.findFirst({
             where: {
                 organizationId: Number(orgId),
                 userId: req.userId!,
+                role: "ADMIN",
             }
         });
 
         if (!membership) {
             return res.status(403).json({
                 success: false,
-                message: "Unauthorized: You are not a member of this organization",
+                message: "Forbidden: Only organization ADMINs can delete this organization",
             });
         }
 
-        // Delete all memberships first (no cascade on this relation)
-        await prisma_client.membership.deleteMany({
-            where: { organizationId: orgId }
-        });
-
-        // Delete organization (boards cascade automatically)
-        await prisma_client.organization.delete({
-            where: {
-                id: Number(orgId),
-            }
-        });
+        // Delete memberships and the org in one transaction.
+        await prisma_client.$transaction([
+            prisma_client.membership.deleteMany({
+                where: { organizationId: Number(orgId) }
+            }),
+            prisma_client.organization.delete({
+                where: {
+                    id: Number(orgId),
+                }
+            }),
+        ]);
 
         return res.status(200).json({
             success: true,
@@ -174,11 +177,7 @@ export const delete_org = async (req: AuthenticatedRequest, res: Response) => {
             data: orgId,
         });
     } catch (error) {
-
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error deleting organization",
-        });
+        return sendError(res, error, "Internal server error deleting organization");
     }
 };
 
@@ -575,27 +574,27 @@ export const remove_member = async (req: AuthenticatedRequest, res: Response) =>
             });
         }
 
-        if (targetMembership.role === "ADMIN") {
-            const adminCount = await prisma_client.membership.count({
+        // Last-admin check and delete happen together so two admins cannot
+        // remove each other at the same time.
+        await prisma_client.$transaction(async (tx) => {
+            if (targetMembership.role === "ADMIN") {
+                const adminCount = await tx.membership.count({
+                    where: {
+                        organizationId: orgId,
+                        role: "ADMIN",
+                    },
+                });
+
+                if (adminCount <= 1) {
+                    throw new Error("LAST_ADMIN");
+                }
+            }
+
+            await tx.membership.delete({
                 where: {
-                    organizationId: orgId,
-                    role: "ADMIN",
+                    id: targetMembership.id,
                 },
             });
-
-            if (adminCount <= 1) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Cannot remove the only ADMIN of the organization. Transfer ownership or promote another member first.",
-                });
-            }
-        }
-
-        // Remove the membership
-        await prisma_client.membership.delete({
-            where: {
-                id: targetMembership.id,
-            },
         });
 
         return res.status(200).json({
@@ -604,11 +603,14 @@ export const remove_member = async (req: AuthenticatedRequest, res: Response) =>
             data: { orgId, userId: targetUserId },
         });
     } catch (error) {
-        console.error("Error removing member:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error removing member",
-        });
+        if (error instanceof Error && error.message === "LAST_ADMIN") {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot remove the only ADMIN of the organization. Transfer ownership or promote another member first.",
+            });
+        }
+
+        return sendError(res, error, "Internal server error removing member");
     }
 };
 

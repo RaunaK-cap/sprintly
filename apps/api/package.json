@@ -5,12 +5,14 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch index.ts",
-    "start": "bun index.ts"
+    "start": "bun index.ts",
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
     "@types/bun": "latest",
-    "@types/jsonwebtoken": "^9.0.10"
+    "@types/jsonwebtoken": "^9.0.10",
+    "typescript": "^5"
   },
   "peerDependencies": {
     "typescript": "^5"

@@ -50,6 +50,7 @@ model membership {
   organization organization @relation(fields: [organizationId], references: [id])
 
   @@unique([userId, organizationId])
+  @@index([organizationId, role])
 }
 
 model board {
@@ -61,6 +62,8 @@ model board {
 
   organization organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   issues       issue[]
+
+  @@index([organizationId])
 }
 
 enum ISSUE_STATUS {
@@ -83,6 +86,9 @@ model issue {
   user      users            @relation(fields: [userId], references: [id])
   assignees issue_assignee[]
   comments  comment[]
+
+  @@index([boardId])
+  @@index([boardId, status])
 }
 
 model issue_assignee {
@@ -107,4 +113,6 @@ model comment {
 
   issue issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
   user  users @relation(fields: [userId], references: [id])
+
+  @@index([issueId])
 }

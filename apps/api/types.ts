@@ -1,24 +1,28 @@
 import { z } from "zod";
 
-
+// Common string rules. Trim first so "   " is rejected.
+const name = z.string().trim().min(1, "This field is required").max(50, "Too long");
+const title = z.string().trim().min(1, "Title is required").max(200, "Title is too long");
+const description = z.string().trim().max(5000, "Description is too long");
 
 export const signupSchema = z.object({
-  firstname: z.string().min(1, "First name is required"),
-  lastname: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters long"),
+  firstname: name,
+  lastname: name,
+  email: z.string().trim().email("Invalid email address").max(254),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters long")
+    .max(72, "Password is too long"),
 });
 
 export const signinSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.string().trim().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
 
-
-
 export const createOrgSchema = z.object({
-  name: z.string().min(1, "Organization name is required"),
-  description: z.string().optional(),
+  name: z.string().trim().min(1, "Organization name is required").max(100),
+  description: description.optional(),
 });
 
 export const getOrgSchema = z.object({
@@ -27,13 +31,13 @@ export const getOrgSchema = z.object({
 
 export const updateOrgSchema = z.object({
   orgId: z.coerce.number({ message: "Organization ID is required" }),
-  name: z.string().min(1, "Organization name is required").optional(),
-  description: z.string().optional(),
+  name: z.string().trim().min(1, "Organization name is required").max(100).optional(),
+  description: description.optional(),
 });
 
 export const inviteMemberSchema = z.object({
   orgId: z.coerce.number({ message: "Organization ID is required" }),
-  email: z.string().email("Invalid email address"),
+  email: z.string().trim().email("Invalid email address"),
 });
 
 export const addMemberSchema = z.object({
@@ -46,53 +50,46 @@ export const deleteOrgSchema = z.object({
   orgId: z.coerce.number({ message: "Organization ID is required" }),
 });
 
-
 export const createBoardSchema = z.object({
-  title: z.string().min(1, "Board title is required"),
+  title: title,
   organizationId: z.number({ message: "Organization ID is required" }),
 });
 
 export const updateBoardSchema = z.object({
-  title: z.string().min(1, "Board title is required"),
+  title: title,
 });
-
-
 
 export const issueStatusEnum = z.enum(["TODO", "IN_PROGRESS", "DONE"]);
 
 export const createIssueSchema = z.object({
-  title: z.string().min(1, "Issue title is required"),
-  description: z.string().optional(),
+  title: title,
+  description: description.optional(),
   boardId: z.number({ message: "Board ID is required" }),
   status: issueStatusEnum.optional().default("TODO"),
 });
 
 export const updateIssueSchema = z.object({
-  title: z.string().min(1).optional(),
-  description: z.string().optional(),
+  title: title.optional(),
+  description: description.optional(),
 });
 
 export const moveIssueStatusSchema = z.object({
   status: issueStatusEnum,
 });
 
-
 export const addAssigneeSchema = z.object({
   issueId: z.number({ message: "Issue ID is required" }),
   userId: z.number({ message: "User ID is required" }),
 });
 
-
 export const createCommentSchema = z.object({
-  content: z.string().min(1, "Comment content cannot be empty"),
+  content: z.string().trim().min(1, "Comment content cannot be empty").max(5000),
   issueId: z.number({ message: "Issue ID is required" }),
 });
 
 export const updateCommentSchema = z.object({
-  content: z.string().min(1, "Comment content cannot be empty"),
+  content: z.string().trim().min(1, "Comment content cannot be empty").max(5000),
 });
-
-
 
 export type SignupInput = z.infer<typeof signupSchema>;
 export type SigninInput = z.infer<typeof signinSchema>;

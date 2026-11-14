@@ -2,7 +2,8 @@ import type { Response } from "express";
 import type { AuthenticatedRequest } from "../middleware/auth";
 import { prisma_client } from "database";
 import { createIssueSchema, updateIssueSchema, moveIssueStatusSchema } from "../types";
-import { z } from "zod";
+import { canAccessBoard, canAccessIssue } from "../lib/authz";
+import { isPositiveInt, sendError } from "../lib/errors";
 
 export const create_issue = async (req: AuthenticatedRequest, res: Response) => {
     const parsedInput = createIssueSchema.safeParse(req.body);
@@ -17,6 +18,15 @@ export const create_issue = async (req: AuthenticatedRequest, res: Response) => 
     const { title, description, boardId, status } = parsedInput.data;
 
     try {
+        // The user must belong to the organization that owns the board.
+        const allowed = await canAccessBoard(req.userId!, boardId);
+        if (!allowed) {
+            return res.status(403).json({
+                success: false,
+                message: "You do not have access to this board",
+            });
+        }
+
         const issue = await prisma_client.issue.create({
             data: {
                 title,
@@ -33,16 +43,14 @@ export const create_issue = async (req: AuthenticatedRequest, res: Response) => 
             data: issue,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error creating issue",
-        });
+        return sendError(res, error, "Internal server error creating issue");
     }
 };
 
 export const get_issue = async (req: AuthenticatedRequest, res: Response) => {
-    const boardIdQuery = req.query.boardId;
-    if (!boardIdQuery) {
+    const boardId = Number(req.query.boardId);
+
+    if (!isPositiveInt(boardId)) {
         return res.status(400).json({
             success: false,
             message: "Board ID query parameter is required",
@@ -50,10 +58,21 @@ export const get_issue = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     try {
+        const allowed = await canAccessBoard(req.userId!, boardId);
+        if (!allowed) {
+            return res.status(403).json({
+                success: false,
+                message: "You do not have access to this board",
+            });
+        }
+
         const issues = await prisma_client.issue.findMany({
             where: {
-                boardId: Number(boardIdQuery),
-            }
+                boardId,
+            },
+            orderBy: {
+                createdAt: "asc",
+            },
         });
 
         return res.status(200).json({
@@ -61,16 +80,13 @@ export const get_issue = async (req: AuthenticatedRequest, res: Response) => {
             data: issues,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error fetching issues",
-        });
+        return sendError(res, error, "Internal server error fetching issues");
     }
 };
 
 export const get_issuebyid = async (req: AuthenticatedRequest, res: Response) => {
     const issueId = Number(req.params.id);
-    if (isNaN(issueId)) {
+    if (!isPositiveInt(issueId)) {
         return res.status(400).json({
             success: false,
             message: "Invalid issue ID format",
@@ -78,6 +94,14 @@ export const get_issuebyid = async (req: AuthenticatedRequest, res: Response) =>
     }
 
     try {
+        const allowed = await canAccessIssue(req.userId!, issueId);
+        if (!allowed) {
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found",
+            });
+        }
+
         const issue = await prisma_client.issue.findUnique({
             where: {
                 id: issueId,
@@ -134,16 +158,13 @@ export const get_issuebyid = async (req: AuthenticatedRequest, res: Response) =>
             data: issue,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error fetching issue",
-        });
+        return sendError(res, error, "Internal server error fetching issue");
     }
 };
 
 export const update_issuebyid = async (req: AuthenticatedRequest, res: Response) => {
     const issueId = Number(req.params.id);
-    if (isNaN(issueId)) {
+    if (!isPositiveInt(issueId)) {
         return res.status(400).json({
             success: false,
             message: "Invalid issue ID format",
@@ -160,6 +181,14 @@ export const update_issuebyid = async (req: AuthenticatedRequest, res: Response)
     }
 
     try {
+        const allowed = await canAccessIssue(req.userId!, issueId);
+        if (!allowed) {
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found",
+            });
+        }
+
         const updatedIssue = await prisma_client.issue.update({
             where: {
                 id: issueId,
@@ -173,16 +202,13 @@ export const update_issuebyid = async (req: AuthenticatedRequest, res: Response)
             data: updatedIssue,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error updating issue",
-        });
+        return sendError(res, error, "Internal server error updating issue");
     }
 };
 
 export const update_issue_status = async (req: AuthenticatedRequest, res: Response) => {
     const issueId = Number(req.params.id);
-    if (isNaN(issueId)) {
+    if (!isPositiveInt(issueId)) {
         return res.status(400).json({
             success: false,
             message: "Invalid issue ID format",
@@ -199,6 +225,14 @@ export const update_issue_status = async (req: AuthenticatedRequest, res: Respon
     }
 
     try {
+        const allowed = await canAccessIssue(req.userId!, issueId);
+        if (!allowed) {
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found",
+            });
+        }
+
         const updatedIssue = await prisma_client.issue.update({
             where: {
                 id: issueId,
@@ -214,16 +248,13 @@ export const update_issue_status = async (req: AuthenticatedRequest, res: Respon
             data: updatedIssue,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error moving issue",
-        });
+        return sendError(res, error, "Internal server error moving issue");
     }
 };
 
 export const delete_issuebyid = async (req: AuthenticatedRequest, res: Response) => {
     const issueId = Number(req.params.id);
-    if (isNaN(issueId)) {
+    if (!isPositiveInt(issueId)) {
         return res.status(400).json({
             success: false,
             message: "Invalid issue ID format",
@@ -231,6 +262,14 @@ export const delete_issuebyid = async (req: AuthenticatedRequest, res: Response)
     }
 
     try {
+        const allowed = await canAccessIssue(req.userId!, issueId);
+        if (!allowed) {
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found",
+            });
+        }
+
         await prisma_client.issue.delete({
             where: {
                 id: issueId,
@@ -242,28 +281,40 @@ export const delete_issuebyid = async (req: AuthenticatedRequest, res: Response)
             message: "Issue deleted successfully",
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error deleting issue",
-        });
+        return sendError(res, error, "Internal server error deleting issue");
     }
 };
 
 export const add_comment = async (req: AuthenticatedRequest, res: Response) => {
     const issueId = Number(req.params.id);
-    const { content } = req.body;
+    const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
 
-    if (isNaN(issueId) || !content || typeof content !== "string" || !content.trim()) {
+    if (!isPositiveInt(issueId) || !content) {
         return res.status(400).json({
             success: false,
             message: "Issue ID and non-empty content are required",
         });
     }
 
+    if (content.length > 5000) {
+        return res.status(400).json({
+            success: false,
+            message: "Comment is too long",
+        });
+    }
+
     try {
+        const allowed = await canAccessIssue(req.userId!, issueId);
+        if (!allowed) {
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found",
+            });
+        }
+
         const comment = await prisma_client.comment.create({
             data: {
-                content: content.trim(),
+                content,
                 issueId,
                 userId: req.userId!,
             },
@@ -285,17 +336,14 @@ export const add_comment = async (req: AuthenticatedRequest, res: Response) => {
             data: comment,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error adding comment",
-        });
+        return sendError(res, error, "Internal server error adding comment");
     }
 };
 
 export const get_comments = async (req: AuthenticatedRequest, res: Response) => {
     const issueId = Number(req.params.id);
 
-    if (isNaN(issueId)) {
+    if (!isPositiveInt(issueId)) {
         return res.status(400).json({
             success: false,
             message: "Invalid issue ID format",
@@ -303,6 +351,14 @@ export const get_comments = async (req: AuthenticatedRequest, res: Response) => 
     }
 
     try {
+        const allowed = await canAccessIssue(req.userId!, issueId);
+        if (!allowed) {
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found",
+            });
+        }
+
         const comments = await prisma_client.comment.findMany({
             where: {
                 issueId,
@@ -327,9 +383,6 @@ export const get_comments = async (req: AuthenticatedRequest, res: Response) => 
             data: comments,
         });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error fetching comments",
-        });
+        return sendError(res, error, "Internal server error fetching comments");
     }
 };

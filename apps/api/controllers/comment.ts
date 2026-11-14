@@ -2,6 +2,8 @@ import type { Response } from "express";
 import type { AuthenticatedRequest } from "../middleware/auth";
 import { prisma_client } from "database";
 import { updateCommentSchema } from "../types";
+import { canAccessIssue } from "../lib/authz";
+import { sendError } from "../lib/errors";
 
 
 //Updates the text of an existing comment.
@@ -40,6 +42,15 @@ export const update_comment = async (req: AuthenticatedRequest, res: Response) =
       });
     }
 
+    // Security check: the user must still have access to the issue's project
+    const hasAccess = await canAccessIssue(currentUserId, existingComment.issueId);
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have access to this issue",
+      });
+    }
+
     // Security check: Only the author can edit the comment
     if (existingComment.userId !== currentUserId) {
       return res.status(403).json({
@@ -71,11 +82,7 @@ export const update_comment = async (req: AuthenticatedRequest, res: Response) =
       data: updatedComment,
     });
   } catch (error) {
-    console.error("Error updating comment:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error updating comment",
-    });
+    return sendError(res, error, "Internal server error updating comment");
   }
 };
 
@@ -114,6 +121,15 @@ export const delete_comment = async (req: AuthenticatedRequest, res: Response) =
       });
     }
 
+    // Security check: the user must have access to the issue's project
+    const hasAccess = await canAccessIssue(currentUserId, existingComment.issueId);
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have access to this issue",
+      });
+    }
+
     // Check if user is the comment author
     const isAuthor = existingComment.userId === currentUserId;
 
@@ -147,10 +163,6 @@ export const delete_comment = async (req: AuthenticatedRequest, res: Response) =
       data: { id: commentId },
     });
   } catch (error) {
-    console.error("Error deleting comment:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error deleting comment",
-    });
+    return sendError(res, error, "Internal server error deleting comment");
   }
 };
