@@ -15,7 +15,7 @@ export function AuthSplitLayout({
   headerLinkText,
   headerLinkHref,
 }: AuthSplitLayoutProps) {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -34,7 +34,7 @@ export function AuthSplitLayout({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
               className="text-muted-foreground hover:text-foreground h-9 w-9 rounded-none shrink-0"
             >
               <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import axios from "axios";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "next-themes";
@@ -19,7 +18,6 @@ import {
   X,
   ArrowRight,
   Edit3,
-  ExternalLink,
   LogOut,
   Building,
   Loader2,
@@ -49,6 +47,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAuthToken, clearAuthToken } from "@/lib/auth";
+import { useBoardSocket, type SocketMessage } from "@/lib/use-board-socket";
 
 // -----------------------------------------------------------------------------
 // 📦 TypeScript Interfaces
@@ -57,13 +56,6 @@ interface Issue {
   id: number;
   title: string;
   status: "TODO" | "IN_PROGRESS" | "DONE" | "todo" | "in_progress" | "done" | string;
-}
-
-interface OrgType {
-  id: number;
-  name: string;
-  description?: string;
-  createdAt: string;
 }
 
 interface BoardInfo {
@@ -89,7 +81,7 @@ export default function CheckingBoardPage() {
   const params = useParams();
   const router = useRouter();
   const bdsid = (params?.bdsid as string) || "1";
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -97,13 +89,11 @@ export default function CheckingBoardPage() {
   // ⚡ State Declarations
   // ---------------------------------------------------------------------------
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [ws, setWs] = useState<WebSocket | null>(null);
   const [boardInfo, setBoardInfo] = useState<BoardInfo | null>(null);
   const [orgBoards, setOrgBoards] = useState<BoardInfo[]>([]);
-  const [orgs, setOrgs] = useState<OrgType[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [activeUsers, setActiveUsers] = useState<number[]>([]);
-  const [isOffline, setIsOffline] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Rename Board Dialog
   const [isRenameOpen, setIsRenameOpen] = useState(false);
@@ -134,6 +124,8 @@ export default function CheckingBoardPage() {
 
   // 1. Fetch Current Board Info (`GET /api/v1/boards/:id`)
   const fetchBoardDetails = useCallback(async () => {
+    setLoadError(null);
+
     try {
       const token = getAuthToken();
       if (!token) return;
@@ -157,8 +149,24 @@ export default function CheckingBoardPage() {
       }
     } catch (err) {
       console.error("Failed to load board info:", err);
+
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        clearAuthToken();
+        router.push("/login");
+        return;
+      }
+
+      if (
+        axios.isAxiosError(err) &&
+        (err.response?.status === 403 || err.response?.status === 404)
+      ) {
+        setLoadError("This board does not exist or you do not have access to it.");
+        return;
+      }
+
+      setLoadError("Could not load this board. Check your connection and try again.");
     }
-  }, [API_URL, bdsid]);
+  }, [API_URL, bdsid, router]);
 
   // 2. Fetch User Profile (`GET /api/v1/users/me`)
   const fetchUserProfile = useCallback(async () => {
@@ -176,107 +184,54 @@ export default function CheckingBoardPage() {
     }
   }, [API_URL]);
 
-  // 3. Fetch Organizations List (`GET /api/v1/org/getorg`)
-  const fetchOrgs = useCallback(async () => {
-    try {
-      const token = getAuthToken();
-      if (!token) return;
-      const res = await axios.get(`${API_URL}/api/v1/org/getorg`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.data.success) {
-        setOrgs(res.data.data || []);
-      }
-    } catch (err: unknown) {
-      console.error("Failed to load org switcher:", err);
-    }
-  }, [API_URL]);
-
   useEffect(() => {
     fetchBoardDetails();
     fetchUserProfile();
-    fetchOrgs();
-  }, [fetchBoardDetails, fetchUserProfile, fetchOrgs]);
+  }, [fetchBoardDetails, fetchUserProfile]);
 
   // ---------------------------------------------------------------------------
-  // 🔌 Real-Time WebSocket Connection (`ws://localhost:8080`)
+  // 🔌 Real-Time WebSocket Connection (`NEXT_PUBLIC_WS_URL`)
   // ---------------------------------------------------------------------------
-  useEffect(() => {
-    const token = getAuthToken();
-    if (!token) {
-      router.push("/login");
-      return;
+  const handleSocketMessage = (parsedData: SocketMessage) => {
+    // Initial board issues state received on join
+    if (parsedData.type === "initial_state") {
+      setIssues(parsedData.all_issues || []);
     }
+    // A card was created (either by you or someone else)
+    if (parsedData.type === "issue_added") {
+      setIssues((prev) => {
+        if (prev.some((x) => x.id === parsedData.issue.id)) return prev;
+        return [...prev, parsedData.issue];
+      });
+    }
+    // A card was moved (TODO <-> IN_PROGRESS <-> DONE)
+    if (parsedData.type === "issue_moved") {
+      setIssues((prev) =>
+        prev.map((x) =>
+          x.id === parsedData.issueId ? { ...x, status: parsedData.newStatus } : x
+        )
+      );
+    }
+    // A card was deleted
+    if (parsedData.type === "delete_issue") {
+      setIssues((prev) => prev.filter((x) => x.id !== parsedData.issueId));
+    }
+    // Online presence
+    if (parsedData.type === "init_room") {
+      setActiveUsers(parsedData.users.map((u: { id: number }) => u.id));
+    }
+    if (parsedData.type === "join") {
+      setActiveUsers((prev) => {
+        if (prev.includes(parsedData.userID)) return prev;
+        return [...prev, parsedData.userID];
+      });
+    }
+    if (parsedData.type === "leave") {
+      setActiveUsers((prev) => prev.filter((id) => id !== parsedData.userID));
+    }
+  };
 
-    let socket: WebSocket;
-    
-    const connectWs = () => {
-      socket = new WebSocket(`ws://localhost:8080?token=${token}`);
-      setWs(socket);
-
-      socket.onopen = () => {
-        setIsOffline(false);
-        // Join this specific board room
-        socket.send(
-          JSON.stringify({
-            type: "join",
-            boardID: bdsid,
-          })
-        );
-      };
-
-      socket.onmessage = (ev) => {
-        const parsedData = JSON.parse(ev.data);
-
-        // Initial board issues state received on join
-        if (parsedData.type === "initial_state") {
-          setIssues(parsedData.all_issues || []);
-        }
-        // A card was created (either by you or someone else)
-        if (parsedData.type === "issue_added") {
-          setIssues((prev) => {
-            if (prev.some((x) => x.id === parsedData.issue.id)) return prev;
-            return [...prev, parsedData.issue];
-          });
-        }
-        // A card was moved (TODO <-> IN_PROGRESS <-> DONE)
-        if (parsedData.type === "issue_moved") {
-          setIssues((prev) =>
-            prev.map((x) =>
-              x.id === parsedData.issueId ? { ...x, status: parsedData.newStatus } : x
-            )
-          );
-        }
-        // A card was deleted
-        if (parsedData.type === "delete_issue") {
-          setIssues((prev) => prev.filter((x) => x.id !== parsedData.issueId));
-        }
-        // Online presence
-        if (parsedData.type === "init_room") {
-          setActiveUsers(parsedData.users.map((u: { id: number }) => u.id));
-        }
-        if (parsedData.type === "join") {
-          setActiveUsers((prev) => {
-            if (prev.includes(parsedData.userID)) return prev;
-            return [...prev, parsedData.userID];
-          });
-        }
-        if (parsedData.type === "leave") {
-          setActiveUsers((prev) => prev.filter((id) => id !== parsedData.userID));
-        }
-      };
-
-      socket.onclose = () => {
-        setIsOffline(true);
-      };
-    };
-
-    connectWs();
-
-    return () => {
-      if (socket) socket.close();
-    };
-  }, [bdsid, router]);
+  const { ws, isOffline } = useBoardSocket(bdsid, handleSocketMessage);
 
   // ---------------------------------------------------------------------------
   // 🎯 Action Handlers: Card operations & Board management
@@ -393,6 +348,31 @@ export default function CheckingBoardPage() {
 
   const displayBoardTitle = boardInfo?.title || `Board #${bdsid}`;
   const displayOrgName = boardInfo?.organization?.name || "Workspace";
+
+  if (loadError && !boardInfo) {
+    return (
+      <div className="min-h-screen bg-background text-foreground font-sans flex items-center justify-center p-6">
+        <div className="w-full max-w-sm border border-border rounded-md p-6 text-center">
+          <p className="text-[15px] font-semibold text-foreground">
+            Can&apos;t open this board
+          </p>
+          <p className="text-[13px] text-muted-foreground mt-2">{loadError}</p>
+          <div className="flex gap-2 mt-5">
+            <Button className="flex-1" onClick={() => fetchBoardDetails()}>
+              Retry
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => router.push("/org/create")}
+            >
+              My organizations
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // 📋 Render Kanban Column
@@ -653,7 +633,7 @@ export default function CheckingBoardPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
             className="text-muted-foreground hover:text-foreground hover:bg-foreground/5 size-8 rounded-sm shrink-0"
             title="Toggle theme"
           >
@@ -734,6 +714,18 @@ export default function CheckingBoardPage() {
           )}
         </div>
       </header>
+
+      {loadError && boardInfo && (
+        <div className="mx-4 mt-4 flex items-center justify-between gap-4 rounded-sm border border-red-500/20 bg-red-500/10 px-4 py-2 text-[12px] text-red-500">
+          <span>{loadError}</span>
+          <button
+            onClick={() => fetchBoardDetails()}
+            className="font-medium underline underline-offset-2 hover:no-underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Mobile Tab Selector */}
       <div className="sm:hidden flex items-center gap-2 p-4 pb-0 overflow-x-auto no-scrollbar border-b border-border">

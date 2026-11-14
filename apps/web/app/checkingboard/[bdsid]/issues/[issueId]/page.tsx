@@ -39,7 +39,8 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { getAuthToken } from "@/lib/auth";
+import { getAuthToken, clearAuthToken } from "@/lib/auth";
+import { useBoardSocket, type SocketMessage } from "@/lib/use-board-socket";
 
 interface CommentType {
   id: number;
@@ -134,7 +135,7 @@ const statusConfig: Record<string, { label: string; dotColor: string }> = {
 export default function CheckingboardIssuePage() {
   const params = useParams();
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
 
   const bdsid = (params?.bdsid as string) || "1";
   const issueId = (params?.issueId as string) || "1";
@@ -147,8 +148,7 @@ export default function CheckingboardIssuePage() {
   const [orgs, setOrgs] = useState<OrgType[]>([]);
   const [activeUsers, setActiveUsers] = useState<number[]>([]);
   const [currentUser, setCurrentUser] = useState<{ id: number; firstname: string; lastname: string; email: string } | null>(null);
-  const [isOffline, setIsOffline] = useState(false);
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Editable fields
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -171,6 +171,8 @@ export default function CheckingboardIssuePage() {
 
   // Fetch initial issue data
   const fetchIssue = useCallback(async () => {
+    setLoadError(null);
+
     try {
       const token = getAuthToken();
       if (!token) return;
@@ -188,8 +190,24 @@ export default function CheckingboardIssuePage() {
       }
     } catch (err) {
       console.error("Failed to load issue:", err);
+
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        clearAuthToken();
+        router.push("/login");
+        return;
+      }
+
+      if (
+        axios.isAxiosError(err) &&
+        (err.response?.status === 403 || err.response?.status === 404)
+      ) {
+        setLoadError("This issue does not exist or you do not have access to it.");
+        return;
+      }
+
+      setLoadError("Could not load this issue. Check your connection and try again.");
     }
-  }, [issueId, NEXT_PUBLIC_API_URL]);
+  }, [issueId, NEXT_PUBLIC_API_URL, router]);
 
   // Fetch orgs list for topbar dropdown
   useEffect(() => {
@@ -229,140 +247,101 @@ export default function CheckingboardIssuePage() {
   }, [fetchIssue, NEXT_PUBLIC_API_URL]);
 
   // WebSocket Connection
-  useEffect(() => {
-    const token = getAuthToken();
-    if (!token) {
-      router.push("/login");
-      return;
+  const handleSocketMessage = (parsed: SocketMessage) => {
+    if (parsed.type === "init_room") {
+      setActiveUsers(parsed.users.map((u: { id: number }) => u.id));
+    }
+    if (parsed.type === "join") {
+      setActiveUsers((prev) => (prev.includes(parsed.userID) ? prev : [...prev, parsed.userID]));
+    }
+    if (parsed.type === "leave") {
+      setActiveUsers((prev) => prev.filter((id) => id !== parsed.userID));
     }
 
-    let socket: WebSocket;
-
-    const connectWs = () => {
-      socket = new WebSocket(`ws://localhost:8080?token=${token}`);
-      setWs(socket);
-
-      socket.onopen = () => {
-        setIsOffline(false);
-        socket.send(
-          JSON.stringify({
-            type: "join",
-            boardID: bdsid,
-          })
-        );
-      };
-
-      socket.onmessage = (ev) => {
-        try {
-          const parsed = JSON.parse(ev.data);
-
-          if (parsed.type === "init_room") {
-            setActiveUsers(parsed.users.map((u: { id: number }) => u.id));
-          }
-          if (parsed.type === "join") {
-            setActiveUsers((prev) => (prev.includes(parsed.userID) ? prev : [...prev, parsed.userID]));
-          }
-          if (parsed.type === "leave") {
-            setActiveUsers((prev) => prev.filter((id) => id !== parsed.userID));
-          }
-
-          // Realtime Comments (Deduplicated with clientTempId reconciliation)
-          if (parsed.type === "comment_added" && Number(parsed.issueId) === Number(issueId)) {
-            setComments((prev) => {
-              // 1. If this was our own optimistic message, reconcile it by clientTempId
-              if (parsed.clientTempId && prev.some((c) => c.clientTempId === parsed.clientTempId)) {
-                return prev.map((c) => (c.clientTempId === parsed.clientTempId ? parsed.comment : c));
-              }
-
-              // 2. Prevent duplicate by real DB ID
-              if (prev.some((c) => c.id === parsed.comment.id)) return prev;
-
-              // 3. Fallback deduplication: If identical content from same author was added within 4s
-              const isRecentDuplicate = prev.some(
-                (c) =>
-                  !c.isSystem &&
-                  c.content === parsed.comment.content &&
-                  (c.userId === parsed.comment.userId || c.userId === 999999 || (currentUser && c.userId === currentUser.id)) &&
-                  Math.abs(new Date(c.createdAt).getTime() - new Date(parsed.comment.createdAt).getTime()) < 4000
-              );
-
-              if (isRecentDuplicate) {
-                return prev.map((c) =>
-                  !c.isSystem &&
-                  c.content === parsed.comment.content &&
-                  (c.userId === parsed.comment.userId || c.userId === 999999 || (currentUser && c.userId === currentUser.id)) &&
-                  Math.abs(new Date(c.createdAt).getTime() - new Date(parsed.comment.createdAt).getTime()) < 4000
-                    ? parsed.comment
-                    : c
-                );
-              }
-
-              return [...prev, parsed.comment];
-            });
-          }
-
-          // Realtime Issue updates (Status, Title, Description)
-          if (parsed.type === "issue_moved" && Number(parsed.issueId) === Number(issueId)) {
-            setIssue((prev) => (prev ? { ...prev, status: parsed.newStatus } : prev));
-            // Add a slim system message
-            setComments((prev) => [
-              ...prev,
-              {
-                id: Date.now(),
-                content: `Status updated to ${statusConfig[parsed.newStatus]?.label || parsed.newStatus}`,
-                issueId: Number(issueId),
-                userId: 0,
-                createdAt: new Date().toISOString(),
-                isSystem: true,
-              },
-            ]);
-          }
-
-          if (parsed.type === "issue_updated" && Number(parsed.issueId) === Number(issueId)) {
-            setIssue((prev) => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                ...(parsed.title !== undefined ? { title: parsed.title } : {}),
-                ...(parsed.description !== undefined ? { description: parsed.description } : {}),
-                ...(parsed.status !== undefined ? { status: parsed.status } : {}),
-              };
-            });
-            if (parsed.title !== undefined) setTitleInput(parsed.title);
-            if (parsed.description !== undefined) setDescInput(parsed.description);
-          }
-
-          // Realtime Typing Indicator
-          if (parsed.type === "user_typing" && Number(parsed.issueId) === Number(issueId)) {
-            const name = parsed.userName || `User #${parsed.userID}`;
-            setTypingUsers((prev) => (prev.includes(name) ? prev : [...prev, name]));
-
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-            typingTimeoutRef.current = setTimeout(() => {
-              setTypingUsers([]);
-            }, 2500);
-          }
-
-          // Issue Deleted
-          if (parsed.type === "delete_issue" && Number(parsed.issueId) === Number(issueId)) {
-            router.push(`/checkingboard/${bdsid}`);
-          }
-        } catch (err) {
-          console.error("WS message parse error:", err);
+    // Realtime Comments (Deduplicated with clientTempId reconciliation)
+    if (parsed.type === "comment_added" && Number(parsed.issueId) === Number(issueId)) {
+      setComments((prev) => {
+        // 1. If this was our own optimistic message, reconcile it by clientTempId
+        if (parsed.clientTempId && prev.some((c) => c.clientTempId === parsed.clientTempId)) {
+          return prev.map((c) => (c.clientTempId === parsed.clientTempId ? parsed.comment : c));
         }
-      };
 
-      socket.onclose = () => {
-        setIsOffline(true);
-      };
-    };
+        // 2. Prevent duplicate by real DB ID
+        if (prev.some((c) => c.id === parsed.comment.id)) return prev;
 
-    connectWs();
+        // 3. Fallback deduplication: If identical content from same author was added within 4s
+        const isRecentDuplicate = prev.some(
+          (c) =>
+            !c.isSystem &&
+            c.content === parsed.comment.content &&
+            (c.userId === parsed.comment.userId || c.userId === 999999 || (currentUser && c.userId === currentUser.id)) &&
+            Math.abs(new Date(c.createdAt).getTime() - new Date(parsed.comment.createdAt).getTime()) < 4000
+        );
 
-    return () => {
-      if (socket) socket.close();
-    };
-  }, [bdsid, issueId, router]);
+        if (isRecentDuplicate) {
+          return prev.map((c) =>
+            !c.isSystem &&
+            c.content === parsed.comment.content &&
+            (c.userId === parsed.comment.userId || c.userId === 999999 || (currentUser && c.userId === currentUser.id)) &&
+            Math.abs(new Date(c.createdAt).getTime() - new Date(parsed.comment.createdAt).getTime()) < 4000
+              ? parsed.comment
+              : c
+          );
+        }
+
+        return [...prev, parsed.comment];
+      });
+    }
+
+    // Realtime Issue updates (Status, Title, Description)
+    if (parsed.type === "issue_moved" && Number(parsed.issueId) === Number(issueId)) {
+      setIssue((prev) => (prev ? { ...prev, status: parsed.newStatus } : prev));
+      // Add a slim system message
+      setComments((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          content: `Status updated to ${statusConfig[parsed.newStatus]?.label || parsed.newStatus}`,
+          issueId: Number(issueId),
+          userId: 0,
+          createdAt: new Date().toISOString(),
+          isSystem: true,
+        },
+      ]);
+    }
+
+    if (parsed.type === "issue_updated" && Number(parsed.issueId) === Number(issueId)) {
+      setIssue((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ...(parsed.title !== undefined ? { title: parsed.title } : {}),
+          ...(parsed.description !== undefined ? { description: parsed.description } : {}),
+          ...(parsed.status !== undefined ? { status: parsed.status } : {}),
+        };
+      });
+      if (parsed.title !== undefined) setTitleInput(parsed.title);
+      if (parsed.description !== undefined) setDescInput(parsed.description);
+    }
+
+    // Realtime Typing Indicator
+    if (parsed.type === "user_typing" && Number(parsed.issueId) === Number(issueId)) {
+      const name = parsed.userName || `User #${parsed.userID}`;
+      setTypingUsers((prev) => (prev.includes(name) ? prev : [...prev, name]));
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        setTypingUsers([]);
+      }, 2500);
+    }
+
+    // Issue Deleted
+    if (parsed.type === "delete_issue" && Number(parsed.issueId) === Number(issueId)) {
+      router.push(`/checkingboard/${bdsid}`);
+    }
+  };
+
+  const { ws, isOffline } = useBoardSocket(bdsid, handleSocketMessage);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -556,8 +535,11 @@ export default function CheckingboardIssuePage() {
     }
   };
 
+  const activeOrg =
+    orgs.find((o) => String(o.id) === String(issue?.board?.organizationId)) ||
+    orgs.find((o) => String(o.id) === String(issue?.board?.organization?.id));
   const activeOrgName =
-    orgs.find((o) => String(o.id) === String(bdsid))?.name ||
+    activeOrg?.name ||
     issue?.board?.organization?.name ||
     `Board #${bdsid}`;
 
@@ -565,6 +547,31 @@ export default function CheckingboardIssuePage() {
     issue?.status && statusConfig[issue.status]
       ? statusConfig[issue.status]!
       : { label: "To-Do", dotColor: "bg-blue-400" };
+
+  if (loadError && !issue) {
+    return (
+      <div className="h-screen bg-background text-foreground font-sans flex items-center justify-center p-6">
+        <div className="w-full max-w-sm border border-border rounded-md p-6 text-center">
+          <p className="text-[15px] font-semibold text-foreground">
+            Can&apos;t open this issue
+          </p>
+          <p className="text-[13px] text-muted-foreground mt-2">{loadError}</p>
+          <div className="flex gap-2 mt-5">
+            <Button className="flex-1" onClick={() => fetchIssue()}>
+              Retry
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => router.push(`/checkingboard/${bdsid}`)}
+            >
+              Back to board
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen max-h-screen bg-background text-foreground font-sans flex flex-col overflow-hidden selection:bg-primary/20 selection:text-foreground">
@@ -627,7 +634,7 @@ export default function CheckingboardIssuePage() {
                     {orgs.map((org) => (
                       <DropdownMenuItem
                         key={org.id}
-                        onClick={() => router.push(`/checkingboard/${org.id}`)}
+                        onClick={() => router.push(`/org/${org.id}`)}
                         className="text-[13px] rounded-sm focus:bg-foreground/5 focus:text-foreground cursor-pointer px-2 py-1.5"
                       >
                         <div className="flex items-center justify-center size-5 rounded-sm bg-foreground/10 text-[10px] font-medium mr-2">
@@ -665,7 +672,7 @@ export default function CheckingboardIssuePage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
             className="text-muted-foreground hover:text-foreground hover:bg-foreground/5 size-8 rounded-sm shrink-0"
           >
             <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

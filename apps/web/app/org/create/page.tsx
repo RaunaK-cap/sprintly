@@ -11,7 +11,6 @@ import {
   Plus,
   Loader2,
   LogOut,
-  Building,
   ArrowRight,
 } from "lucide-react";
 import { 
@@ -49,7 +48,7 @@ interface UserProfile {
 
 export default function OrganizationsPage() {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   
   // Left side: orgs user created (ADMIN)
   const [createdOrgs, setCreatedOrgs] = useState<Org[]>([]);
@@ -266,7 +265,7 @@ export default function OrganizationsPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
               className="text-muted-foreground hover:text-foreground h-11 w-11 rounded-sm shrink-0"
               title="Toggle theme"
             >

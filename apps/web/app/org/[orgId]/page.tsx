@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { useTheme } from "next-themes";
-import { motion, AnimatePresence } from "motion/react";
 import {
   LayoutGrid,
   Users,
@@ -18,14 +17,12 @@ import {
   ExternalLink,
   ShieldCheck,
   UserPlus,
-  Search,
   Loader2,
   Check,
   MoreVertical,
   CircleDot,
   Building,
   LogOut,
-  Calendar,
 } from "lucide-react";
 import {
   Dialog,
@@ -39,7 +36,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -97,7 +93,7 @@ export default function OrgHubPage() {
   const params = useParams();
   const router = useRouter();
   const orgId = Number(params?.orgId);
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -479,7 +475,7 @@ export default function OrgHubPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
               className="text-muted-foreground hover:text-foreground hover:bg-foreground/5 size-8 rounded-sm"
               title="Toggle Theme"
             >
