@@ -1,8 +1,15 @@
 **/node_modules
 **/.next
+**/out
+**/dist
 **/.turbo
+**/.env
+**/.env.*
 .git
-.env*
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+.github
+**/*.log
+.DS_Store
+coverage
+
+# Prisma Client is generated inside the image at build time.
+packages/database/generated

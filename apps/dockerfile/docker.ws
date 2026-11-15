@@ -1,19 +1,18 @@
-FROM oven/bun:1-slim AS base
+FROM oven/bun:1-slim
+
 WORKDIR /app
 
+COPY ./package.json ./bun.lock ./turbo.json ./
 COPY ./packages ./packages
-COPY ./bun.lock ./bun.lock
+COPY ./apps/websocket ./apps/websocket
 
-COPY ./package.json ./package.json
-COPY ./turbo.json ./turbo.json
+RUN bun install
+RUN bun run db:generate
 
-COPY ./apps/websocket  ./apps/websocket
+ENV NODE_ENV=production
 
-RUN bun install 
-
-WORKDIR  /app/apps/websocket
+WORKDIR /app/apps/websocket
 
 EXPOSE 8080
-CMD ["bun", "run", "index.ts"]
 
-
+CMD ["bun", "run", "start"]
